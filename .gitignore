@@ -1,0 +1,12 @@
+*.swp
+*.o
+bin/*
+.clangd
+.vscode
+.cmake/
+CMakeFiles/
+docs/*
+build/*
+cmake_install.cmake
+Makefile
+CMakeCache.txt
