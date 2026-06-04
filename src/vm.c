@@ -3,8 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void initVM(struct VM *vm){
+    memset(vm, 0, sizeof(struct VM));
     vm->sp = MEM_SIZE;
     vm->pc = 0;
     vm->sr = 0x10;

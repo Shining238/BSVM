@@ -22,7 +22,7 @@ int main(int argc, char *argv[]){
 
     CHK(access(filename, R_OK | F_OK));
 
-    struct VM vm = {0};
+    struct VM vm;
 
     initVM(&vm);
 

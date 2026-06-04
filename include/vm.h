@@ -22,6 +22,7 @@ struct VM {
     uint16_t pc;
     uint8_t sr;
     int32_t memory[MEM_SIZE];
+    uint8_t running;
 };
 
 void initVM(struct VM *vm);
