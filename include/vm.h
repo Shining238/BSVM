@@ -12,6 +12,11 @@ typedef enum {
     ILL_MEM_ACCESS
 } VM_Error;
 
+#define M_OVERFLOW 0x08
+#define M_NEGATIVE 0x04
+#define M_ZERO 0x02
+#define M_CARRY 0x01
+
 /*       5  4  3  2  1  0
     sr : S IE  O  N  Z  C
     */

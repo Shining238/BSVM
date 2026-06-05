@@ -26,6 +26,33 @@ typedef enum {
     OP_DIVD,
     OP_DIVI,
     OP_DIVX,
+    OP_NEG,
+    OP_AND,
+    OP_ANDR,
+    OP_ANDD,
+    OP_ANDI,
+    OP_ANDX,
+    OP_OR,
+    OP_ORR,
+    OP_ORD,
+    OP_ORI,
+    OP_ORX,
+    OP_XOR,
+    OP_XORR,
+    OP_XORD,
+    OP_XORI,
+    OP_XORX,
+    OP_NOT,
+    OP_SHL,
+    OP_SHLR,
+    OP_SHLD,
+    OP_SHLI,
+    OP_SHLX,
+    OP_SHR,
+    OP_SHRR,
+    OP_SHRD,
+    OP_SHRI,
+    OP_SHRX,
     OP_STD,
     OP_STI,
     OP_STX,
@@ -36,6 +63,14 @@ typedef enum {
     OP_LDX,
     OP_PUSH,
     OP_POP,
+    OP_FASD,
+    OP_FASI,
+    OP_FASX,
+    OP_CALL,
+    OP_CALLR,
+    OP_CALLD,
+    OP_CALLI,
+    OP_CALLX,
     OP_NOP,
     OP_COUNT
 } OP_CODE;
@@ -48,9 +83,9 @@ struct Instruction {
     union args {
         struct reg{
             uint8_t b;
-            int32_t offset;
+            int64_t offset;
         } reg;
-        int32_t imm;
+        int64_t imm;
     } args;
 };
 
