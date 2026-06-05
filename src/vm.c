@@ -17,13 +17,13 @@ void printVM(struct VM *vm){
 
     printf("--REGISTERS--\n\n");
     for (size_t i = 0; i < N_REG; i++){
-        printf("R%lu\t: %x\n", i, vm->registers[i]);
+        printf("R%lu\t: %lx\n", i, vm->registers[i]);
     }
-    printf("\nPC : %x\nSP : %x\nSR : %x\n\n", vm->pc, vm->sp, vm->sr);
+    printf("\nPC : %lx\nSP : %lx\nSR : %x\n\n", vm->pc, vm->sp, vm->sr);
     printf("--MEMORY--\n\n");
 
     for (size_t i = 0; i < MEM_SIZE; i++){
-        printf("%lx\t: %x\n", i, vm->memory[i]);
+        printf("%lx\t: %lx\n", i, vm->memory[i]);
     }
     printf("------Fin------\n\n");
 }

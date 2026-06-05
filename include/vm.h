@@ -17,11 +17,11 @@ typedef enum {
     */
 
 struct VM {
-    int32_t registers[N_REG];
-    uint16_t sp;
-    uint16_t pc;
+    int64_t registers[N_REG];
+    uint64_t sp;
+    uint64_t pc;
     uint8_t sr;
-    int32_t memory[MEM_SIZE];
+    int64_t memory[MEM_SIZE];
     uint8_t running;
 };
 

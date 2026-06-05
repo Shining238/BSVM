@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-VM_Error memRead(struct VM *vm, uint16_t addr, int32_t *out){
+VM_Error memRead(struct VM *vm, uint64_t addr, int64_t *out){
     if (addr > MEM_SIZE){
         return ILL_MEM_ACCESS;
     }
@@ -13,8 +13,8 @@ VM_Error memRead(struct VM *vm, uint16_t addr, int32_t *out){
     return VM_OK;   
 }
 
-VM_Error memWrite(struct VM *vm, uint16_t addr, int32_t value){
-    if (addr > MEM_SIZE){
+VM_Error memWrite(struct VM *vm, uint64_t addr, int64_t value){
+    if (addr >= MEM_SIZE){
         return ILL_MEM_ACCESS;
     }
 
