@@ -17,10 +17,6 @@ typedef enum {
 
 } VM_Error;
 
-#define M_OVERFLOW 0x08
-#define M_NEGATIVE 0x04
-#define M_ZERO 0x02
-#define M_CARRY 0x01
 
 /*       5  4  3  2  1  0
     sr : S IE  O  N  Z  C
@@ -38,3 +34,16 @@ struct VM {
 void initVM(struct VM *vm);
 
 void printVM(struct VM *vm);
+
+
+void setSROF(struct VM *vm, uint8_t value);
+uint8_t getSROF(struct VM *vm);
+
+void setSRNF(struct VM *vm, uint8_t value);
+uint8_t getSRNF(struct VM *vm);
+
+void setSRZF(struct VM *vm, uint8_t value);
+uint8_t getSRZF(struct VM *vm);
+
+void setSRCF(struct VM *vm, uint8_t value);
+uint8_t getSRCF(struct VM *vm);
