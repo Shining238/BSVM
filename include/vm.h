@@ -27,7 +27,7 @@ struct VM {
     uint64_t sp;
     uint64_t pc;
     uint8_t sr;
-    int64_t memory[MEM_SIZE];
+    uint8_t memory[MEM_SIZE];
     uint8_t running;
 };
 

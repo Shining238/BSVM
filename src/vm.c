@@ -28,7 +28,7 @@ void printVM(struct VM *vm){
     printf("--MEMORY--\n\n");
 
     for (size_t i = 0; i < MEM_SIZE; i++){
-        printf("%lx\t: %lx\n", i, vm->memory[i]);
+        printf("%lx\t: %x\n", i, vm->memory[i]);
     }
     printf("------Fin------\n\n");
 }

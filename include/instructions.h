@@ -125,6 +125,7 @@ _Static_assert(OP_COUNT <= 256, "Too many op_codes");
 
 struct Instruction {
     OP_CODE opcode;
+    uint8_t size;
     uint8_t a;
     union args {
         struct reg{
