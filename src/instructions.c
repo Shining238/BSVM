@@ -1117,6 +1117,82 @@ VM_Error instrLDX(struct VM *vm, const struct Instruction *instr){
     return memRead(vm, addr, &vm->registers[instr->a]);
 }
 
+//SWPR R0 R1 (R0 <-> R1)
+VM_Error instrSWPR(struct VM *vm, const struct Instruction *instr){
+    if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
+        return ILL_REGISTER;
+    }
+    int64_t tmp = vm->registers[instr->a];
+    vm->registers[instr->a] = vm->registers[instr->args.reg.b];
+    vm->registers[instr->args.reg.b] = tmp;
+    return VM_OK;
+}
+
+//SWPD R0 [x] (R0 <-> MEM[x])
+VM_Error instrSWPD(struct VM *vm, const struct Instruction *instr){
+    if (instr->a >= N_REG){
+        return ILL_REGISTER;
+    }
+    uint64_t addr = (uint64_t) instr->args.imm;
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+
+    int64_t tmp;
+    VM_Error status = memRead(vm, addr, &tmp);
+    if (status == VM_OK){
+        status = memWrite(vm, addr, vm->registers[instr->a]);
+        if (status == VM_OK){
+            vm->registers[instr->a] = tmp;
+        }
+    }
+    return status;
+}
+
+//SWPI R0 [R1] (R0 <-> MEM[R1])
+VM_Error instrSWPI(struct VM *vm, const struct Instruction *instr){
+    if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
+        return ILL_REGISTER;
+    }
+
+    uint64_t addr = (uint64_t) vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+
+    int64_t tmp;
+    VM_Error status = memRead(vm, addr, &tmp);
+    if (status == VM_OK){
+        status = memWrite(vm, addr, vm->registers[instr->a]);
+        if (status == VM_OK){
+            vm->registers[instr->a] = tmp;
+        }
+    }
+    return status;
+}
+
+//SWPX R0 [R1+x] (R0 <-> MEM[R1+x])
+VM_Error instrSWPX(struct VM *vm, const struct Instruction *instr){
+    if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
+        return ILL_REGISTER;
+    }
+
+    uint64_t addr = (uint64_t) (vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+
+    int64_t tmp;
+    VM_Error status = memRead(vm, addr, &tmp);
+    if (status == VM_OK){
+        status = memWrite(vm, addr, vm->registers[instr->a]);
+        if (status == VM_OK){
+            vm->registers[instr->a] = tmp;
+        }
+    }
+    return status;
+}
+
 //PUSH R0 (MEM[SP] = R0 & SP = SP-1)
 VM_Error instrPUSH(struct VM *vm, const struct Instruction *instr){
     if (vm->sp <= STACK_BASE){
@@ -1367,8 +1443,7 @@ VM_Error instrRST(struct VM *vm, const struct Instruction *instr){
     return VM_OK;
 }
 
-//JMP x (PC = x)
-VM_Error instrJMP(struct VM *vm, const struct Instruction *instr){
+VM_Error jump(struct VM *vm, const struct Instruction *instr){
     if ((uint64_t) instr->args.imm >= DATA_BASE){
         return INVALID_JMP;
     }
@@ -1377,9 +1452,7 @@ VM_Error instrJMP(struct VM *vm, const struct Instruction *instr){
     return VM_OK;
 }
 
-//JMPR R0 (PC = R0)
-VM_Error instrJMPR(struct VM *vm, const struct Instruction *instr){
-
+VM_Error jumpr(struct VM *vm, const struct Instruction *instr){
     if (instr->a > N_REG){
         return ILL_REGISTER;
     }
@@ -1392,9 +1465,7 @@ VM_Error instrJMPR(struct VM *vm, const struct Instruction *instr){
     return VM_OK;
 }
 
-//JMPD [x] (PC = MEM[x])
-VM_Error instrJMPD(struct VM *vm, const struct Instruction *instr){
-
+VM_Error jumpd(struct VM *vm, const struct Instruction *instr){
     if ((uint64_t) instr->args.imm >= DATA_BASE){
         return INVALID_JMP;
     }
@@ -1410,9 +1481,7 @@ VM_Error instrJMPD(struct VM *vm, const struct Instruction *instr){
     return status;
 }
 
-//JMPI [R0] (PC = MEM[R0])
-VM_Error instrJMPI(struct VM *vm, const struct Instruction *instr){
-
+VM_Error jumpi(struct VM *vm, const struct Instruction *instr){
     if (instr->a > N_REG){
         return ILL_REGISTER;
     }
@@ -1432,9 +1501,7 @@ VM_Error instrJMPI(struct VM *vm, const struct Instruction *instr){
     return status;
 }
 
-//JMPX [R0+x] (PC = MEM[R0+x])
-VM_Error instrJMPX(struct VM *vm, const struct Instruction *instr){
-
+VM_Error jumpx(struct VM *vm, const struct Instruction *instr){
     if (instr->a > N_REG){
         return ILL_REGISTER;
     }
@@ -1452,6 +1519,278 @@ VM_Error instrJMPX(struct VM *vm, const struct Instruction *instr){
         vm->pc = (uint64_t) value;
     }
     return status;
+}
+
+//JMP x (PC = x)
+VM_Error instrJMP(struct VM *vm, const struct Instruction *instr){
+    return jump(vm, instr);
+}
+
+//JMPR R0 (PC = R0)
+VM_Error instrJMPR(struct VM *vm, const struct Instruction *instr){
+    return jumpr(vm, instr);
+}
+
+//JMPD [x] (PC = MEM[x])
+VM_Error instrJMPD(struct VM *vm, const struct Instruction *instr){
+    return jumpd(vm, instr);
+}
+
+//JMPI [R0] (PC = MEM[R0])
+VM_Error instrJMPI(struct VM *vm, const struct Instruction *instr){
+    return jumpi(vm, instr);
+}
+
+//JMPX [R0+x] (PC = MEM[R0+x])
+VM_Error instrJMPX(struct VM *vm, const struct Instruction *instr){
+    return jumpx(vm, instr);
+}
+
+//JEQ x (PC = x si Z dans SR)
+VM_Error instrJEQ(struct VM *vm, const struct Instruction *instr){
+    
+    if (!getSRZF(vm)){
+        return VM_OK;
+    }
+
+    return jump(vm, instr);
+}
+
+//JEQR R0 (PC = R0 si Z dans SR)
+VM_Error instrJEQR(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpr(vm, instr);
+}
+
+//JEQD [x] (PC = MEM[x] si Z dans SR)
+VM_Error instrJEQD(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpd(vm, instr);
+}
+
+//JEQI [R0] (PC = MEM[R0] si Z dans SR)
+VM_Error instrJEQI(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpi(vm, instr);
+}
+
+//JEQX [R0+x] (PC = MEM[R0+x] si Z dans SR)
+VM_Error instrJEQX(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm)){
+        return VM_OK;
+    }
+   return jumpx(vm, instr);
+}
+
+//JNE x (PC = x si !Z dans SR)
+VM_Error instrJNE(struct VM *vm, const struct Instruction *instr){
+    
+    if (getSRZF(vm)){
+        return VM_OK;
+    }
+    return jump(vm, instr);
+}
+
+//JNER R0 (PC = R0 si !Z dans SR)
+VM_Error instrJNER(struct VM *vm, const struct Instruction *instr){
+    if (getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpr(vm, instr);
+}
+
+//JNED [x] (PC = MEM[x] si !Z dans SR)
+VM_Error instrJNED(struct VM *vm, const struct Instruction *instr){
+    if (getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpd(vm, instr);
+}
+
+//JNEI [R0] (PC = MEM[R0] si !Z dans SR)
+VM_Error instrJNEI(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpi(vm, instr);
+}
+
+//JNEX [R0+x] (PC = MEM[R0+x] si !Z dans SR)
+VM_Error instrJNEX(struct VM *vm, const struct Instruction *instr){
+    if (getSRZF(vm)){
+        return VM_OK;
+    }
+    return jumpx(vm, instr);
+}
+
+uint8_t eq_log(uint8_t a, uint8_t b){
+    return ((a != 0) && (b != 0)) || ((a == 0) && (b == 0));
+}
+
+//JLE x (PC = x si Z || N != O dans SR)
+VM_Error instrJLE(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) && eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jump(vm, instr);
+}
+
+//JLER R0 (PC = R0 si Z || N != O  dans SR)
+VM_Error instrJLER(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) && eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpr(vm, instr);
+}
+
+//JLED [x] (PC = MEM[x] si Z || N != O dans SR)
+VM_Error instrJLED(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) && eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpd(vm, instr);
+}
+
+//JLEI [R0] (PC = MEM[R0] si Z || N != O dans SR)
+VM_Error instrJLEI(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) && eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpi(vm, instr);
+}
+
+//JLEX [R0+x] (PC = MEM[R0+x] si Z || N != O dans SR)
+VM_Error instrJLEX(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) && eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpx(vm, instr);
+}
+
+//JLT x (PC = x si N != O dans SR)
+VM_Error instrJLT(struct VM *vm, const struct Instruction *instr){
+    if (eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jump(vm, instr);
+}
+
+//JLTR R0 (PC = R0 si N != O  dans SR)
+VM_Error instrJLTR(struct VM *vm, const struct Instruction *instr){
+    if (eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpr(vm, instr);
+}
+
+//JLTD [x] (PC = MEM[x] N != O dans SR)
+VM_Error instrJLTD(struct VM *vm, const struct Instruction *instr){
+    if (eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpd(vm, instr);
+}
+
+//JLTI [R0] (PC = MEM[R0] si N != O dans SR)
+VM_Error instrJLTI(struct VM *vm, const struct Instruction *instr){
+    if (eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpi(vm, instr);
+}
+
+//JLTX [R0+x] (PC = MEM[R0+x] si N != O dans SR)
+VM_Error instrJLTX(struct VM *vm, const struct Instruction *instr){
+    if (eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpx(vm, instr);
+}
+
+//JGE x (PC = x si N = O dans SR)
+VM_Error instrJGE(struct VM *vm, const struct Instruction *instr){
+    if (!eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jump(vm, instr);
+}
+
+//JGER R0 (PC = R0 si N = O  dans SR)
+VM_Error instrJGER(struct VM *vm, const struct Instruction *instr){
+    if (!eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpr(vm, instr);
+}
+
+//JGED [x] (PC = MEM[x] N = O dans SR)
+VM_Error instrJGED(struct VM *vm, const struct Instruction *instr){
+    if (!eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpd(vm, instr);
+}
+
+//JGEI [R0] (PC = MEM[R0] si N = O dans SR)
+VM_Error instrJGEI(struct VM *vm, const struct Instruction *instr){
+    if (!eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpi(vm, instr);
+}
+
+//JGEX [R0+x] (PC = MEM[R0+x] si N = O dans SR)
+VM_Error instrJGEX(struct VM *vm, const struct Instruction *instr){
+    if (!eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpx(vm, instr);
+}
+
+//JGT x (PC = x si Z && N = O dans SR)
+VM_Error instrJGT(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jump(vm, instr);
+}
+
+//JGTR R0 (PC = R0 si Z && N = O  dans SR)
+VM_Error instrJGTR(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpr(vm, instr);
+}
+
+//JGTD [x] (PC = MEM[x] si Z && N = O dans SR)
+VM_Error instrJGTD(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpd(vm, instr);
+}
+
+//JGTI [R0] (PC = MEM[R0] si Z && N = O dans SR)
+VM_Error instrJGTI(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpi(vm, instr);
+}
+
+//JGTX [R0+x] (PC = MEM[R0+x] si Z && N = O dans SR)
+VM_Error instrJGTX(struct VM *vm, const struct Instruction *instr){
+    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+        return VM_OK;
+    }
+    return jumpx(vm, instr);
 }
 
 static InstrHandler dispatch[OP_COUNT] = {
@@ -1515,6 +1854,10 @@ static InstrHandler dispatch[OP_COUNT] = {
     [OP_LDD] = instrLDD,
     [OP_LDI] = instrLDI,
     [OP_LDX] = instrLDX,
+    [OP_SWPR] = instrSWPR,
+    [OP_SWPD] = instrSWPD,
+    [OP_SWPI] = instrSWPI,
+    [OP_SWPX] = instrSWPX,
     [OP_PUSH] = instrPUSH,
     [OP_POP] = instrPOP,
     [OP_FASD] = instrFASD,
@@ -1532,6 +1875,36 @@ static InstrHandler dispatch[OP_COUNT] = {
     [OP_JMPD] = instrJMPD,
     [OP_JMPI] = instrJMPI,
     [OP_JMPX] = instrJMPX,
+    [OP_JEQ] = instrJEQ,
+    [OP_JEQR] = instrJEQR,
+    [OP_JEQD] = instrJEQD,
+    [OP_JEQI] = instrJEQI,
+    [OP_JEQX] = instrJEQX,
+    [OP_JNE] = instrJNE,
+    [OP_JNER] = instrJNER,
+    [OP_JNED] = instrJNED,
+    [OP_JNEI] = instrJNEI,
+    [OP_JNEX] = instrJNEX,
+    [OP_JLE] = instrJLE,
+    [OP_JLER] = instrJLER,
+    [OP_JLED] = instrJLED,
+    [OP_JLEI] = instrJLEI,
+    [OP_JLEX] = instrJLEX,
+    [OP_JLT] = instrJLT,
+    [OP_JLTR] = instrJLTR,
+    [OP_JLTD] = instrJLTD,
+    [OP_JLTI] = instrJLTI,
+    [OP_JLTX] = instrJLTX,
+    [OP_JGE] = instrJGE,
+    [OP_JGER] = instrJGER,
+    [OP_JGED] = instrJGED,
+    [OP_JGEI] = instrJGEI,
+    [OP_JGEX] = instrJGEX,
+    [OP_JGT] = instrJGT,
+    [OP_JGTR] = instrJGTR,
+    [OP_JGTD] = instrJGTD,
+    [OP_JGTI] = instrJGTI,
+    [OP_JGTX] = instrJGTX,
     [OP_RST] = instrRST
 };
 
