@@ -71,7 +71,14 @@ typedef enum {
     OP_CALLD,
     OP_CALLI,
     OP_CALLX,
+    OP_RTN,
     OP_NOP,
+    OP_RST,
+    OP_JMP,
+    OP_JMPR,
+    OP_JMPD,
+    OP_JMPI,
+    OP_JMPX,
     OP_COUNT
 } OP_CODE;
 

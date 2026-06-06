@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 VM_Error memRead(struct VM *vm, uint64_t addr, int64_t *out){
-    if (addr > MEM_SIZE){
+    if (addr >= MEM_SIZE){
         return ILL_MEM_ACCESS;
     }
     

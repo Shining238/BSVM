@@ -9,7 +9,12 @@ typedef enum {
     INSTR_ILL,
     INSTR_PRIV,
     INSTR_TRAP,
-    ILL_MEM_ACCESS
+    ILL_MEM_ACCESS,
+    ILL_REGISTER,
+    STACK_UNDERFLOW,
+    STACK_OVERFLOW,
+    INVALID_JMP
+
 } VM_Error;
 
 #define M_OVERFLOW 0x08

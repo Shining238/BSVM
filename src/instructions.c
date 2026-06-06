@@ -1,5 +1,6 @@
 #include "instructions.h"
 #include "memory.h"
+#include "vm.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -9,7 +10,7 @@
 
 VM_Error instrADD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
     vm->registers[instr->a] += instr->args.imm;
     return VM_OK;
@@ -18,7 +19,7 @@ VM_Error instrADD(struct VM *vm, const struct Instruction *instr){
 //ADDR R0 R1 (R0 += R1)
 VM_Error instrADDR(struct VM *vm, const struct Instruction *instr){
     if (instr->args.reg.b >= N_REG || instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
     vm->registers[instr->a] += vm->registers[instr->args.reg.b];
     return VM_OK;
@@ -27,7 +28,11 @@ VM_Error instrADDR(struct VM *vm, const struct Instruction *instr){
 //ADDD R0 [x] (R0 += MEM[x])
 VM_Error instrADDD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
+    }
+
+    if ((uint64_t)instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
     }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
@@ -40,11 +45,15 @@ VM_Error instrADDD(struct VM *vm, const struct Instruction *instr){
 //ADDI R0 [R1] (R0 += MEM[R1])
 VM_Error instrADDI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] = vm->registers[instr->a] + value;
     }
@@ -54,11 +63,15 @@ VM_Error instrADDI(struct VM *vm, const struct Instruction *instr){
 //ADDX R0 [R1+x] (R0 += MEM[R1+x])
 VM_Error instrADDX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] += value;
     }
@@ -68,7 +81,7 @@ VM_Error instrADDX(struct VM *vm, const struct Instruction *instr){
 //SUB R0 5 (R0 -= 5)
 VM_Error instrSUB(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] -= instr->args.imm;
@@ -78,7 +91,7 @@ VM_Error instrSUB(struct VM *vm, const struct Instruction *instr){
 //SUBR R0 R1 (R0 -= R1)
 VM_Error instrSUBR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] -= vm->registers[instr->args.reg.b];
@@ -88,9 +101,12 @@ VM_Error instrSUBR(struct VM *vm, const struct Instruction *instr){
 //SUBD R0 [x] (R0 -= MEM[x])
 VM_Error instrSUBD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -102,11 +118,15 @@ VM_Error instrSUBD(struct VM *vm, const struct Instruction *instr){
 //SUBI R0 [R1] (R0 -= MEM[R1])
 VM_Error instrSUBI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)instr->args.reg.b, &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] -= value;
     }
@@ -116,11 +136,15 @@ VM_Error instrSUBI(struct VM *vm, const struct Instruction *instr){
 //SUBX R0 [R1+x] (R0 -= MEM[R1+x])
 VM_Error instrSUBX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] -= value;
     }
@@ -130,7 +154,7 @@ VM_Error instrSUBX(struct VM *vm, const struct Instruction *instr){
 //MUL R0 5 (R0 *= 5)
 VM_Error instrMUL(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] *= instr->args.imm;
@@ -140,7 +164,7 @@ VM_Error instrMUL(struct VM *vm, const struct Instruction *instr){
 //MULR R0 R1 (R0 *= R1)
 VM_Error instrMULR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] *= vm->registers[instr->args.reg.b];
@@ -150,9 +174,12 @@ VM_Error instrMULR(struct VM *vm, const struct Instruction *instr){
 //MULD R0 [x] (R0 *= MEM[x])
 VM_Error instrMULD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -164,11 +191,15 @@ VM_Error instrMULD(struct VM *vm, const struct Instruction *instr){
 //MULI R0 [R1] (R0 *= MEM[R1])
 VM_Error instrMULI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t) vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t) vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] *= value;
     }
@@ -178,11 +209,15 @@ VM_Error instrMULI(struct VM *vm, const struct Instruction *instr){
 //MULX R0 [R1+x] (R0 *= MEM[R1+x])
 VM_Error instrMULX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] *= value;
     }
@@ -193,7 +228,7 @@ VM_Error instrMULX(struct VM *vm, const struct Instruction *instr){
 //DIV R0 5 (R0 = R0 / 5)
 VM_Error instrDIV(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
     if (instr->args.imm == 0){
         return DIV_0;
@@ -206,7 +241,7 @@ VM_Error instrDIV(struct VM *vm, const struct Instruction *instr){
 //DIVR R0 R1 (R0 = R0 / R1)
 VM_Error instrDIVR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
     if (vm->registers[instr->args.reg.b] == 0){
         return DIV_0;
@@ -219,9 +254,12 @@ VM_Error instrDIVR(struct VM *vm, const struct Instruction *instr){
 //DIVD R0 [x] (R0 /= MEM[x])
 VM_Error instrDIVD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t) instr->args.imm, &value);
     if (status == VM_OK){
@@ -236,11 +274,15 @@ VM_Error instrDIVD(struct VM *vm, const struct Instruction *instr){
 //DIVI R0 [R1] (R0 /= MEM[R1])
 VM_Error instrDIVI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         if (value == 0){
             return DIV_0;
@@ -253,11 +295,15 @@ VM_Error instrDIVI(struct VM *vm, const struct Instruction *instr){
 //DIVX R0 [R1+x] (R0 /= MEM[R1+x])
 VM_Error instrDIVX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t) (vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t) (vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         if (value == 0){
             return DIV_0;
@@ -270,7 +316,7 @@ VM_Error instrDIVX(struct VM *vm, const struct Instruction *instr){
 //NEG R0 (R0 = -R0)
 VM_Error instrNEG(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
     vm->registers[instr->a] = -vm->registers[instr->a];
     return VM_OK;
@@ -279,7 +325,7 @@ VM_Error instrNEG(struct VM *vm, const struct Instruction *instr){
 //AND R0 x (R0 &= x)
 VM_Error instrAND(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] &= instr->args.imm;
@@ -289,7 +335,7 @@ VM_Error instrAND(struct VM *vm, const struct Instruction *instr){
 //ANDR R0 R1 (R0 &= R1)
 VM_Error instrANDR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] &= vm->registers[instr->args.reg.b];
@@ -299,9 +345,12 @@ VM_Error instrANDR(struct VM *vm, const struct Instruction *instr){
 //ANDD R0 [x] (R0 &= MEM[x])
 VM_Error instrANDD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t)instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -313,11 +362,15 @@ VM_Error instrANDD(struct VM *vm, const struct Instruction *instr){
 //ANDI R0 [R1] (R0 &= MEM[R1])
 VM_Error instrANDI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] &= value;
     }
@@ -327,11 +380,15 @@ VM_Error instrANDI(struct VM *vm, const struct Instruction *instr){
 //ANDX R0 [R1+x] (R0 &= MEM[R1+x])
 VM_Error instrANDX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] &= value;
     }
@@ -341,7 +398,7 @@ VM_Error instrANDX(struct VM *vm, const struct Instruction *instr){
 //OR R0 x (R0 |= x)
 VM_Error instrOR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] |= instr->args.imm;
@@ -351,7 +408,7 @@ VM_Error instrOR(struct VM *vm, const struct Instruction *instr){
 //ORR R0 R1 (R0 |= R1)
 VM_Error instrORR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] |= vm->registers[instr->args.reg.b];
@@ -361,9 +418,12 @@ VM_Error instrORR(struct VM *vm, const struct Instruction *instr){
 //ORD R0 [x] (R0 |= MEM[x])
 VM_Error instrORD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t)instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -375,11 +435,15 @@ VM_Error instrORD(struct VM *vm, const struct Instruction *instr){
 //ORI R0 [R1] (R0 |= MEM[R1])
 VM_Error instrORI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] |= value;
     }
@@ -389,11 +453,15 @@ VM_Error instrORI(struct VM *vm, const struct Instruction *instr){
 //ORX R0 [R1+x] (R0 |= MEM[R1+x])
 VM_Error instrORX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] |= value;
     }
@@ -403,7 +471,7 @@ VM_Error instrORX(struct VM *vm, const struct Instruction *instr){
 //XOR R0 x (R0 ^= x)
 VM_Error instrXOR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] ^= instr->args.imm;
@@ -413,7 +481,7 @@ VM_Error instrXOR(struct VM *vm, const struct Instruction *instr){
 //XORR R0 R1 (R0 ^= R1)
 VM_Error instrXORR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] ^= vm->registers[instr->args.reg.b];
@@ -423,9 +491,12 @@ VM_Error instrXORR(struct VM *vm, const struct Instruction *instr){
 //XORD R0 [x] (R0 ^= MEM[x])
 VM_Error instrXORD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t)instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -437,11 +508,15 @@ VM_Error instrXORD(struct VM *vm, const struct Instruction *instr){
 //XORI R0 [R1] (R0 ^= MEM[R1])
 VM_Error instrXORI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] ^= value;
     }
@@ -451,11 +526,15 @@ VM_Error instrXORI(struct VM *vm, const struct Instruction *instr){
 //XORX R0 [R1+x] (R0 ^= MEM[R1+x])
 VM_Error instrXORX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] ^= value;
     }
@@ -464,7 +543,7 @@ VM_Error instrXORX(struct VM *vm, const struct Instruction *instr){
 //NOT R0 (R0 = ~R0)
 VM_Error instrNOT(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] = ~vm->registers[instr->a];
@@ -474,7 +553,7 @@ VM_Error instrNOT(struct VM *vm, const struct Instruction *instr){
 //SHL R0 x (R0 << x)
 VM_Error instrSHL(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] << instr->args.imm;
@@ -484,7 +563,7 @@ VM_Error instrSHL(struct VM *vm, const struct Instruction *instr){
 //SHLR R0 R1 (R0 << R1)
 VM_Error instrSHLR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] << vm->registers[instr->args.reg.b];
@@ -494,9 +573,12 @@ VM_Error instrSHLR(struct VM *vm, const struct Instruction *instr){
 //SHLD R0 [x] (R0 << MEM[x])
 VM_Error instrSHLD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t)instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -508,11 +590,15 @@ VM_Error instrSHLD(struct VM *vm, const struct Instruction *instr){
 //SHLI R0 [R1] (R0 << MEM[R1])
 VM_Error instrSHLI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] << value;
     }
@@ -522,11 +608,15 @@ VM_Error instrSHLI(struct VM *vm, const struct Instruction *instr){
 //SHLX R0 [R1+x] (R0 << MEM[R1+x])
 VM_Error instrSHLX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] << value;
     }
@@ -536,7 +626,7 @@ VM_Error instrSHLX(struct VM *vm, const struct Instruction *instr){
 //SHR R0 x (R0 >> x)
 VM_Error instrSHR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] >> instr->args.imm;
@@ -546,7 +636,7 @@ VM_Error instrSHR(struct VM *vm, const struct Instruction *instr){
 //SHRR R0 R1 (R0 >> R1)
 VM_Error instrSHRR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] >> vm->registers[instr->args.reg.b];
@@ -556,9 +646,12 @@ VM_Error instrSHRR(struct VM *vm, const struct Instruction *instr){
 //SHRD R0 [x] (R0 >> MEM[x])
 VM_Error instrSHRD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &value);
     if (status == VM_OK){
@@ -570,11 +663,15 @@ VM_Error instrSHRD(struct VM *vm, const struct Instruction *instr){
 //SHRI R0 [R1] (R0 >> MEM[R1])
 VM_Error instrSHRI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] >> value;
     }
@@ -584,11 +681,15 @@ VM_Error instrSHRI(struct VM *vm, const struct Instruction *instr){
 //SHRX R0 [R1+x] (R0 >> MEM[R1+x])
 VM_Error instrSHRX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     int64_t value;
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &value);
+    VM_Error status = memRead(vm, addr, &value);
     if (status == VM_OK){
         vm->registers[instr->a] >> value;
     }
@@ -598,34 +699,45 @@ VM_Error instrSHRX(struct VM *vm, const struct Instruction *instr){
 //STD R0 [x] (MEM[x] = R0)
 VM_Error instrSTD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     return memWrite(vm, (uint64_t) instr->args.imm, vm->registers[instr->a]);
 }
 
 //STI R0 R1 (MEM[R1] = R0)
 VM_Error instrSTI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
-    return memWrite(vm, (uint64_t)vm->registers[instr->args.reg.b], vm->registers[instr->a]);
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+    return memWrite(vm, addr, vm->registers[instr->a]);
 }
 
 //STX R0 [R1+x] (MEM[R1+x] = R0)
 VM_Error instrSTX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
-    return memWrite(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), vm->registers[instr->a]);
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+    return memWrite(vm, addr, vm->registers[instr->a]);
 }
 
 //LD R0 x (R0 = x)
 VM_Error instrLD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] = instr->args.imm;
@@ -635,7 +747,7 @@ VM_Error instrLD(struct VM *vm, const struct Instruction *instr){
 //LDR R0 R1 (R0 = R1)
 VM_Error instrLDR(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->registers[instr->a] = vm->registers[instr->args.reg.b];
@@ -645,37 +757,48 @@ VM_Error instrLDR(struct VM *vm, const struct Instruction *instr){
 //LDD R0 [x] (R0 = MEM[x])
 VM_Error instrLDD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     return memRead(vm, (uint64_t) instr->args.imm, &vm->registers[instr->a]);
 }
 
 //LDI R0 [R1] (R0 = MEM[R1])
 VM_Error instrLDI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
-
-    return memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &vm->registers[instr->a]);
+    
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+    return memRead(vm, addr, &vm->registers[instr->a]);
 }
 
 //LDX R0 [R1+x] (R0 = MEM[R1+x])
 VM_Error instrLDX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG || instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
+    }
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
     }
 
-    return memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &vm->registers[instr->a]);
+    return memRead(vm, addr, &vm->registers[instr->a]);
 }
 
 //PUSH R0 (MEM[SP] = R0 & SP = SP-1)
 VM_Error instrPUSH(struct VM *vm, const struct Instruction *instr){
-    if (vm->sp == 0){
-        return ILL_MEM_ACCESS;
+    if (vm->sp <= STACK_BASE){
+        return STACK_OVERFLOW;
     }
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     vm->sp--;
@@ -689,11 +812,11 @@ VM_Error instrPUSH(struct VM *vm, const struct Instruction *instr){
 
 //POP R0 (R0 = MEM[SP] & SP = SP + 1)
 VM_Error instrPOP(struct VM *vm, const struct Instruction *instr){
-    if (vm->sp == MEM_SIZE){
-        return ILL_MEM_ACCESS;
+    if (vm->sp >= MEM_SIZE){
+        return STACK_UNDERFLOW;
     }
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
     VM_Error read_status = memRead(vm, vm->sp, &vm->registers[instr->a]);
     if (read_status == VM_OK){
@@ -706,9 +829,12 @@ VM_Error instrPOP(struct VM *vm, const struct Instruction *instr){
 //FASD R0 [x] (R0 = MEM[x] & MEM[x] = 1)
 VM_Error instrFASD(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
+    if ((uint64_t) instr->args.imm < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
     VM_Error status = memRead(vm, (uint64_t)instr->args.imm, &vm->registers[instr->a]);
     if (status == VM_OK){
         status = memWrite(vm, (uint64_t)instr->args.imm, 1);
@@ -719,10 +845,14 @@ VM_Error instrFASD(struct VM *vm, const struct Instruction *instr){
 //FASI R0 [R1] (R0 = MEM[R1] & MEM[R1] = 1)
 VM_Error instrFASI(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG && instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
-    VM_Error status = memRead(vm, (uint64_t)vm->registers[instr->args.reg.b], &vm->registers[instr->a]);
+    uint64_t addr = (uint64_t)vm->registers[instr->args.reg.b];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+    VM_Error status = memRead(vm, addr, &vm->registers[instr->a]);
     if (status == VM_OK){
         status = memWrite(vm, (uint64_t)instr->args.reg.b, 1);
     }
@@ -732,10 +862,14 @@ VM_Error instrFASI(struct VM *vm, const struct Instruction *instr){
 //FASX R0 [R1+x] (R0 = MEM[R1+x] & MEM[R1+x] = 1)
 VM_Error instrFASX(struct VM *vm, const struct Instruction *instr){
     if (instr->a >= N_REG && instr->args.reg.b >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
-    VM_Error status = memRead(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), &vm->registers[instr->a]);
+    uint64_t addr = (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+    VM_Error status = memRead(vm, addr, &vm->registers[instr->a]);
     if (status == VM_OK){
         status = memWrite(vm, (uint64_t)(vm->registers[instr->args.reg.b] + instr->args.reg.offset), 1);
     }
@@ -745,11 +879,11 @@ VM_Error instrFASX(struct VM *vm, const struct Instruction *instr){
 //CALL x (PUSH PC & JMP x)
 VM_Error instrCALL(struct VM *vm, const struct Instruction *instr){
 
-    if (vm->sp == 0){
-        return ILL_MEM_ACCESS;
+    if (vm->sp <= STACK_BASE){
+        return STACK_OVERFLOW;
     }
-    if (instr->args.imm >= MEM_SIZE){
-        return INSTR_ILL;
+    if ((uint64_t) instr->args.imm >= DATA_BASE){
+        return INVALID_JMP;
     }
 
     vm->sp--;
@@ -765,11 +899,14 @@ VM_Error instrCALL(struct VM *vm, const struct Instruction *instr){
 
 //CALLR R0 (PUSH PC & JMP [R0])
 VM_Error instrCALLR(struct VM *vm, const struct Instruction *instr){
-    if (vm->sp == 0){
-        return ILL_MEM_ACCESS;
+    if (instr->a >= N_REG){
+        return ILL_REGISTER;
     }
-    if (vm->registers[instr->a] >= MEM_SIZE){
-        return INSTR_ILL;
+    if (vm->sp <= STACK_BASE){
+        return STACK_OVERFLOW;
+    }
+    if (vm->registers[instr->a] >= DATA_BASE){
+        return INVALID_JMP;
     }
 
     vm->sp--;
@@ -785,8 +922,8 @@ VM_Error instrCALLR(struct VM *vm, const struct Instruction *instr){
 
 //CALLD [x] (PUSH PC & JMP MEM[x])
 VM_Error instrCALLD(struct VM *vm, const struct Instruction *instr){
-    if (vm->sp == 0){
-        return ILL_MEM_ACCESS;
+    if (vm->sp <= STACK_BASE){
+        return STACK_OVERFLOW;
     }
     
     int64_t addr;
@@ -796,8 +933,8 @@ VM_Error instrCALLD(struct VM *vm, const struct Instruction *instr){
     if (status != VM_OK){
         return status;
     }
-    if (addr >= MEM_SIZE){
-        return INSTR_ILL;
+    if (addr >= DATA_BASE){
+        return INVALID_JMP;
     }
     vm->sp--;
      
@@ -812,11 +949,11 @@ VM_Error instrCALLD(struct VM *vm, const struct Instruction *instr){
 
 //CALLI [R0] (PUSH PC & JMP MEM[R0])
 VM_Error instrCALLI(struct VM *vm, const struct Instruction *instr){
-    if (vm->sp == 0){
-        return ILL_MEM_ACCESS;
+    if (vm->sp <= STACK_BASE){
+        return STACK_OVERFLOW;
     }
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     int64_t addr;
@@ -825,8 +962,8 @@ VM_Error instrCALLI(struct VM *vm, const struct Instruction *instr){
     if (status != VM_OK){
         return status;
     }
-    if (addr >= MEM_SIZE){
-        return INSTR_ILL;
+    if (addr >= DATA_BASE){
+        return INVALID_JMP;
     }
 
     vm->sp--;
@@ -842,11 +979,11 @@ VM_Error instrCALLI(struct VM *vm, const struct Instruction *instr){
 
 //CALLX [R0+x] (PUSH PC & JMP MEM[R0+x])
 VM_Error instrCALLX(struct VM *vm, const struct Instruction *instr){
-    if (vm->sp == 0){
-        return ILL_MEM_ACCESS;
+    if (vm->sp <= STACK_BASE){
+        return STACK_OVERFLOW;
     }
     if (instr->a >= N_REG){
-        return INSTR_ILL;
+        return ILL_REGISTER;
     }
 
     int64_t addr;
@@ -855,8 +992,8 @@ VM_Error instrCALLX(struct VM *vm, const struct Instruction *instr){
     if (status != VM_OK){
         return status;
     }
-    if (addr >= MEM_SIZE){
-        return INSTR_ILL;
+    if (addr >= DATA_BASE){
+        return INVALID_JMP;
     }
 
     vm->sp--;
@@ -870,6 +1007,27 @@ VM_Error instrCALLX(struct VM *vm, const struct Instruction *instr){
     return status;
 }
 
+//RTN (POP PC)
+VM_Error instrRTN(struct VM *vm, const struct Instruction *instr){
+    if (vm->sp >= MEM_SIZE){
+        return STACK_UNDERFLOW;
+    }
+
+    (void) instr;
+    int64_t value;
+    VM_Error status = memRead(vm, vm->sp, &value);
+    if (value >= DATA_BASE){
+        return INVALID_JMP;
+    }
+
+    if (status == VM_OK){
+        vm->pc = (uint64_t)value;
+        vm->sp++;
+    }
+    return status;
+}
+
+
 //NOP (fait rien)
 VM_Error instrNOP(struct VM *vm, const struct Instruction *instr){
     (void) vm;
@@ -877,6 +1035,99 @@ VM_Error instrNOP(struct VM *vm, const struct Instruction *instr){
     return VM_OK;
 }
 
+//RST (reinitialise la vm)
+VM_Error instrRST(struct VM *vm, const struct Instruction *instr){
+    (void) instr;
+    initVM(vm);
+    return VM_OK;
+}
+
+//JMP x (PC = x)
+VM_Error instrJMP(struct VM *vm, const struct Instruction *instr){
+    if ((uint64_t) instr->args.imm >= DATA_BASE){
+        return INVALID_JMP;
+    }
+
+    vm->pc = (uint64_t) instr->args.imm;
+    return VM_OK;
+}
+
+//JMPR R0 (PC = R0)
+VM_Error instrJMPR(struct VM *vm, const struct Instruction *instr){
+
+    if (instr->a > N_REG){
+        return ILL_REGISTER;
+    }
+    uint64_t addr = (uint64_t) vm->registers[instr->a];
+    if (addr >= DATA_BASE){
+        return INVALID_JMP;
+    }
+
+    vm->pc = addr;
+    return VM_OK;
+}
+
+//JMPD [x] (PC = MEM[x])
+VM_Error instrJMPD(struct VM *vm, const struct Instruction *instr){
+
+    if ((uint64_t) instr->args.imm >= DATA_BASE){
+        return INVALID_JMP;
+    }
+
+    int64_t value;
+    VM_Error status = memRead(vm, (uint64_t) instr->args.imm, &value);
+    if (status == VM_OK){
+        if((uint64_t) value >= DATA_BASE){
+            return INVALID_JMP;
+        }
+        vm->pc = (uint64_t) value;
+    }
+    return status;
+}
+
+//JMPI [R0] (PC = MEM[R0])
+VM_Error instrJMPI(struct VM *vm, const struct Instruction *instr){
+
+    if (instr->a > N_REG){
+        return ILL_REGISTER;
+    }
+    uint64_t addr = (uint64_t) vm->registers[instr->a];
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+
+    int64_t value;
+    VM_Error status = memRead(vm, addr, &value);
+    if (status == VM_OK){
+        if ((uint64_t) value >= DATA_BASE){
+            return INVALID_JMP;
+        }
+        vm->pc = (uint64_t) value;
+    }
+    return status;
+}
+
+//JMPX [R0+x] (PC = MEM[R0+x])
+VM_Error instrJMPX(struct VM *vm, const struct Instruction *instr){
+
+    if (instr->a > N_REG){
+        return ILL_REGISTER;
+    }
+    uint64_t addr = (uint64_t)(vm->registers[instr->a] + instr->args.reg.offset);
+    if (addr < DATA_BASE){
+        return ILL_MEM_ACCESS;
+    }
+
+    int64_t value;
+    VM_Error status = memRead(vm, addr, &value);
+    if (status == VM_OK){
+        if ((uint64_t) value >= DATA_BASE){
+            return INVALID_JMP;
+        }
+        vm->pc = (uint64_t) value;
+    }
+    return status;
+}
 
 static InstrHandler dispatch[OP_COUNT] = {
     [OP_ADD] = instrADD,
@@ -944,7 +1195,14 @@ static InstrHandler dispatch[OP_COUNT] = {
     [OP_CALLD] = instrCALLD,
     [OP_CALLI] = instrCALLI,
     [OP_CALLX] = instrCALLX,
-    [OP_NOP] = instrNOP
+    [OP_RTN] = instrRTN,
+    [OP_NOP] = instrNOP,
+    [OP_JMP] = instrJMP,
+    [OP_JMPR] = instrJMPR,
+    [OP_JMPD] = instrJMPD,
+    [OP_JMPI] = instrJMPI,
+    [OP_JMPX] = instrJMPX,
+    [OP_RST] = instrRST
 };
 
 

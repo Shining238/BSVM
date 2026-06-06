@@ -88,5 +88,34 @@ int main(int argc, char *argv[]){
     printf("Test instruction ADDX\n");
     printVM(&vm);
 
+    vm.registers[1] = 0x2d;
+    vm.pc = 40;
+    struct Instruction instrCALLX = {.opcode = OP_CALLX, .a = 1, .args.reg.offset = -0x03};
+
+    get_handler(instrCALLX.opcode)(&vm, &instrCALLX);
+    printf("Test instruction CALLX\n");
+    printVM(&vm);
+
+    struct Instruction instrRTN = {.opcode = OP_RTN};
+
+    get_handler(instrRTN.opcode)(&vm, &instrRTN);
+    printf("Test instruction RTN\n");
+    printVM(&vm);
+
+    struct Instruction instrPUSH = {.opcode = OP_PUSH, .a = 0};
+    while ((status = get_handler(instrPUSH.opcode)(&vm, &instrPUSH)) == VM_OK);
+    if (status == STACK_OVERFLOW){
+        printf("Stack Overflow\n");
+    }
+    printf("Test STACK_BASE\n");
+    printVM(&vm);
+
+    vm.registers[0] = 5;
+    struct Instruction instrJMPX = {.opcode = OP_JMPX, .a = 1, .args.reg.offset = -0x2};
+    get_handler(instrJMPX.opcode)(&vm, &instrJMPX);
+
+    printf("Test instruction JMPX\n");
+    printVM(&vm);
+
     return 0;
 }

@@ -3,6 +3,4 @@
 #include "common.h"
 
 
-void cpu_step(struct VM *vm){
-    
-}
+void cpu_step(struct VM *vm);
