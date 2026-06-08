@@ -34,6 +34,8 @@ struct VM {
     uint8_t running;
 };
 
+char *errorToString(VM_Error status);
+
 void initVM(struct VM *vm);
 
 void printVM(struct VM *vm);

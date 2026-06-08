@@ -1753,41 +1753,41 @@ VM_Error instrJGEX(struct VM *vm, const struct Instruction *instr){
     return jumpx(vm, instr);
 }
 
-//JGT x (PC = x si Z && N = O dans SR)
+//JGT x (PC = x si !Z && N = O dans SR)
 VM_Error instrJGT(struct VM *vm, const struct Instruction *instr){
-    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+    if (getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
         return VM_OK;
     }
     return jump(vm, instr);
 }
 
-//JGTR R0 (PC = R0 si Z && N = O  dans SR)
+//JGTR R0 (PC = R0 si Z && !N = O  dans SR)
 VM_Error instrJGTR(struct VM *vm, const struct Instruction *instr){
-    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+    if (getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
         return VM_OK;
     }
     return jumpr(vm, instr);
 }
 
-//JGTD [x] (PC = MEM[x] si Z && N = O dans SR)
+//JGTD [x] (PC = MEM[x] si !Z && N = O dans SR)
 VM_Error instrJGTD(struct VM *vm, const struct Instruction *instr){
-    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+    if (getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
         return VM_OK;
     }
     return jumpd(vm, instr);
 }
 
-//JGTI [R0] (PC = MEM[R0] si Z && N = O dans SR)
+//JGTI [R0] (PC = MEM[R0] si !Z && N = O dans SR)
 VM_Error instrJGTI(struct VM *vm, const struct Instruction *instr){
-    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+    if (getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
         return VM_OK;
     }
     return jumpi(vm, instr);
 }
 
-//JGTX [R0+x] (PC = MEM[R0+x] si Z && N = O dans SR)
+//JGTX [R0+x] (PC = MEM[R0+x] si !Z && N = O dans SR)
 VM_Error instrJGTX(struct VM *vm, const struct Instruction *instr){
-    if (!getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
+    if (getSRZF(vm) || !eq_log(getSRNF(vm), getSROF(vm))){
         return VM_OK;
     }
     return jumpx(vm, instr);

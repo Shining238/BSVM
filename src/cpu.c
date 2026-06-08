@@ -30,6 +30,6 @@ VM_Error cpu_step(struct VM *vm){
     if (status == VM_OK && vm->pc == old_pc){ //dans le cas où l'execution n'est pas déroutée
         vm->pc += consumed;
     }
-    
+
     return status;
 }
