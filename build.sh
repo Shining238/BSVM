@@ -3,5 +3,5 @@
 mkdir -p build
 cd build
 cmake ..
-cmake --build . --target vm
+cmake --build . --target bsvm
 

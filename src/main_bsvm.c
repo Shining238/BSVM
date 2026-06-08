@@ -2,6 +2,7 @@
 #include "vm.h"
 #include "loader.h"
 #include "cpu.h"
+#include "binary.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,32 @@ int main(){
     size_t prog_size = totalProgSize(program, 13);
     uint8_t bytecode[DATA_BASE] = {0};
     size_t written = encodeProgram(program, 13, bytecode);
+
+    struct BinaryHeader headers = {.magic_number=MAGIC_NUMBER, .entry_point=0, .code_size=written};
+    struct Binary bin = {.headers=headers, .bytecode=bytecode};
+
+    writeBinaryFile("out.bsin", &bin);
+
+    struct Binary out;
+    readBinaryFile("out.bsin", &out);
+    if (out.headers.magic_number != bin.headers.magic_number){
+        fprintf(stderr, "Wrong magic number\n");
+        exit(EXIT_FAILURE);
+    }
+    if (out.headers.entry_point != bin.headers.entry_point){
+        fprintf(stderr, "Wrong entry point\n");
+        exit(EXIT_FAILURE);
+    }
+    if (out.headers.code_size != bin.headers.code_size){
+        fprintf(stderr, "Wrong code size\n");
+        exit(EXIT_FAILURE);
+    }
+    for (size_t i = 0; i < out.headers.code_size; i++){
+        if (out.bytecode[i] != bin.bytecode[i]){
+            fprintf(stderr, "Corruption du bytecode\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 
     if (prog_size != written){
         fprintf(stderr, "Erreur lors de l'encodage du programme\n");

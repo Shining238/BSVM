@@ -11,11 +11,11 @@ add_compile_options(-Og -g -Wall -Wextra -Wunused -Iinclude -Wpedantic -fsanitiz
 add_link_options(-fsanitize=address,leak,undefined)
 
 file(GLOB_RECURSE C_SOURCES "src/*.c")
-list(FILTER C_SOURCES EXCLUDE REGEX ".*/main\\.c$")
+list(FILTER C_SOURCES EXCLUDE REGEX ".*/main_bsvm\\.c$")
 
 add_library(custom_vm ${C_SOURCES})
 
 target_include_directories(custom_vm PUBLIC include)
 
-add_executable(vm src/main.c)
-target_link_libraries(vm PUBLIC custom_vm m)
+add_executable(bsvm src/main_bsvm.c)
+target_link_libraries(bsvm PUBLIC custom_vm m)
