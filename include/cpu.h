@@ -1,6 +1,6 @@
 #pragma once
 
 #include "common.h"
+#include "vm.h"
 
-
-void cpu_step(struct VM *vm);
+VM_Error cpu_step(struct VM *vm);

@@ -6,7 +6,6 @@
 typedef enum {
     VM_OK,
     DIV_0,
-    INSTR_ILL,
     INSTR_PRIV,
     INSTR_TRAP,
     ILL_MEM_ACCESS,
@@ -14,7 +13,10 @@ typedef enum {
     STACK_UNDERFLOW,
     STACK_OVERFLOW,
     INVALID_JMP,
-    LOAD_OUT_OF_BOUNDS
+    LOAD_OUT_OF_BOUNDS,
+    INVALID_EXECUTION_ADDRESS,
+    TRUNCATED_INSTR,
+    UNKNOWN_INSTR
 
 } VM_Error;
 

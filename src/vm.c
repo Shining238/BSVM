@@ -21,6 +21,8 @@ void initVM(struct VM *vm){
 void printVM(struct VM *vm){
     printf("------Affichage------\n");
 
+    printf("--Etat--\n\n");
+    printf("%s\n\n", (vm->running ? "Running !" : "Halted !"));
     printf("--REGISTERS--\n\n");
     for (size_t i = 0; i < N_REG; i++){
         printf("R%lu\t: %lx\n", i, vm->registers[i]);
