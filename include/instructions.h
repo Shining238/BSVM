@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "vm.h"
+#include <stdlib.h>
 #include <stdint.h>
 
 //256 max
@@ -118,20 +119,34 @@ typedef enum {
     OP_JGTD,
     OP_JGTI,
     OP_JGTX,
+    OP_HALT,
     OP_COUNT
 } OP_CODE;
 
-_Static_assert(OP_COUNT <= 256, "Too many op_codes");
+typedef enum {
+    NONE,
+    REG,
+    IMM,
+    OFF,
+    MODE_COUNT
+} MODE;
+
+static size_t mode_size[MODE_COUNT] = {
+    [REG] = 32,
+    [IMM] = 96,
+    [OFF] = 96
+};
+
+_Static_assert(OP_COUNT <= 256, "Too many op_codes\n");
+_Static_assert(MODE_COUNT <= 256, "Too many modes\n");
 
 struct Instruction {
     OP_CODE opcode;
-    uint8_t size;
+    MODE mode;
     uint8_t a;
+    uint8_t b;
     union args {
-        struct reg{
-            uint8_t b;
-            int64_t offset;
-        } reg;
+        int64_t offset;
         int64_t imm;
     } args;
 };
