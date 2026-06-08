@@ -132,9 +132,10 @@ typedef enum {
 } MODE;
 
 static size_t mode_size[MODE_COUNT] = {
-    [REG] = 32,
-    [IMM] = 96,
-    [OFF] = 96
+    [NONE] = 2,
+    [REG] = 4,
+    [IMM] = 11,
+    [OFF] = 12
 };
 
 _Static_assert(OP_COUNT <= 256, "Too many op_codes\n");

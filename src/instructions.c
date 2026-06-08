@@ -1793,8 +1793,9 @@ VM_Error instrJGTX(struct VM *vm, const struct Instruction *instr){
     return jumpx(vm, instr);
 }
 
-//HALT (termine le programme)
+//HALT (stop l'execution du programme)
 VM_Error instrHALT(struct VM *vm, const struct Instruction *instr){
+    (void) instr;
     vm->running = 0;
     return VM_OK;
 }

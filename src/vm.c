@@ -15,6 +15,7 @@ void initVM(struct VM *vm){
     vm->sp = MEM_SIZE;
     vm->pc = 0;
     vm->sr = 0x10;
+    vm->running = 1;
 }
 
 void printVM(struct VM *vm){

@@ -13,7 +13,8 @@ typedef enum {
     ILL_REGISTER,
     STACK_UNDERFLOW,
     STACK_OVERFLOW,
-    INVALID_JMP
+    INVALID_JMP,
+    LOAD_OUT_OF_BOUNDS
 
 } VM_Error;
 

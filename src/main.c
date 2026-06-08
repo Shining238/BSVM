@@ -8,6 +8,7 @@
 #include "memory.h"
 #include "instructions.h"
 #include "instructions_codec.h"
+#include "loader.h"
 
 #define CHK_OP(instr, op_name, str) ((instr->opcode == op_name) ? str : "OUPS")
 
@@ -18,12 +19,12 @@ void usage(char *prog){
     exit(1);
 }
 
-void test_instr(const struct Instruction *instr, struct Instruction *res, char *op_str, char *mode_str){
-    memset(res, 0, sizeof(struct Instruction));
+void test_instr(const struct Instruction *instr, uint8_t *buffer, char *op_str, char *mode_str){
 
-    uint8_t buffer[16];
-    size_t written = instruction_encode(instr, buffer);
-    size_t consumed = instruction_decode(res, buffer);
+    struct Instruction res = {0};
+
+    size_t written = instructionEncode(instr, buffer, 16);
+    size_t consumed = instructionDecode(&res, buffer, 16);
     //char *op_name = CHK_OP(res, instr->opcode, op_str);
     //char *mode = CHK_MODE(res, instr->mode, mode_str);
 
@@ -31,19 +32,19 @@ void test_instr(const struct Instruction *instr, struct Instruction *res, char *
     if (written != consumed){
         printf("écrit != consommé ");
     }
-    if (instr->opcode != res->opcode){
+    if (instr->opcode != res.opcode){
         printf("op_code ");
     }
-    if (instr->mode != res->mode){
+    if (instr->mode != res.mode){
         printf("mode ");
     }
-    if (instr->a != res->a){
+    if (instr->a != res.a){
         printf("A ");
     }
-    if (instr->b != res->b){
+    if (instr->b != res.b){
         printf("B ");
     }
-    if (instr->args.offset != res->args.offset){
+    if (instr->args.offset != res.args.offset){
         printf("args ");
     }
     printf("\n");
@@ -54,6 +55,15 @@ void test_instr(const struct Instruction *instr, struct Instruction *res, char *
     printf("\n");
     printf("w:%lu, r:%lu\nop : %s, mode : %s, R%d, R%d, imm : %lx, offset : %lx\n", written, consumed, op_name, mode, res->a, res->b, res->args.imm, res->args.offset);
 */
+}
+
+size_t totalProgSize(const struct Instruction *program, size_t size){
+    
+    size_t total = 0;
+    for (size_t i = 0; i < size; i++){
+        total += mode_size[program[i].mode];
+    }
+    return total;
 }
 
 
@@ -71,23 +81,10 @@ int main(int argc, char *argv[]){
 
     initVM(&vm);
 
-    VM_Error status;
     int64_t value;
+    VM_Error status;
 
     (void) mode_size;
-
-    if ((status = memWrite64(&vm, 42, 42)) != VM_OK){
-        printf("glory to israel\n");
-    }
-    
-    if ((status = memRead64(&vm, 42, &value)) != VM_OK){
-        printf("glory to the USI\n");
-    }
-    else {
-        printf("value : %lx\n", value);
-    }
-    
-    printVM(&vm);
 
     const struct Instruction instrADD = {.opcode = OP_ADD, .mode = IMM, .a = 0, .args.imm = 0x1234};
 
@@ -162,24 +159,61 @@ int main(int argc, char *argv[]){
     printf("Test instruction JMPX\n");
     printVM(&vm);
 
+    const struct Instruction instrHALT = {.opcode = OP_HALT, .mode = NONE};
+
     printf("\n\n-----Test codec-----\n");
-    struct Instruction res;
+    uint8_t buffer[16];
 
-    test_instr(&instrADD, &res, "ADD", "IMM");
-    test_instr(&instrADDR, &res, "ADDR", "REG");
-    test_instr(&instrADDD, &res, "ADDD", "IMM");
-    test_instr(&instrADDI, &res, "ADDI", "REG");
-    test_instr(&instrADDX, &res, "ADDX", "OFF");
+    test_instr(&instrADD, buffer, "ADD", "IMM");
+    test_instr(&instrADDR, buffer, "ADDR", "REG");
+    test_instr(&instrADDD, buffer, "ADDD", "IMM");
+    test_instr(&instrADDI, buffer, "ADDI", "REG");
+    test_instr(&instrADDX, buffer, "ADDX", "OFF");
 
-    test_instr(&instrCALLX, &res, "CALLX", "OFF");
+    test_instr(&instrCALLX, buffer, "CALLX", "OFF");
 
-    test_instr(&instrJMPX, &res, "JMPX", "OFF");
+    test_instr(&instrJMPX, buffer, "JMPX", "OFF");
 
-    test_instr(&instrPUSH, &res, "PUSH", "REG");
+    test_instr(&instrPUSH, buffer, "PUSH", "REG");
 
-    test_instr(&instrRTN, &res, "RTN", "NONE");
+    test_instr(&instrRTN, buffer, "RTN", "NONE");
+
+    test_instr(&instrHALT, buffer, "HALT", "NONE");
+
+    const struct Instruction program[16] = {
+        instrADD,
+        instrADDR,
+        instrADDD,
+        instrADDI,
+        instrADDX,
+        instrCALLX,
+        instrJMPX,
+        instrPUSH,
+        instrRTN,
+        instrHALT
+    };
+
+    uint8_t bytecode[DATA_BASE] = {0};
+   
+    size_t written = encodeProgram(program, 10, bytecode);
+
+    status = loadProgram(&vm, bytecode, written, 80);
     
+    printf("----- Test loader -----\n");
+    if (status == VM_OK){
+        printVM(&vm);
+        printf("taille totale du programme : %lu\n", totalProgSize(program, 10));
+        printf("%lu bytes chargés en mémoire\n", written);
+    }
+    else if (status == LOAD_OUT_OF_BOUNDS){
+        printf("Out of bounds : %lu >= %lu\n", written, (size_t) DATA_BASE);
+    }
 
+    size_t cursor = 80;
+    for (size_t i = 0; i < 10; i++){
+        test_instr(&program[i], vm.memory + cursor, "OPCODE", "MODE");
+        cursor += mode_size[program[i].mode];
+    }
 
     return 0;
 }
