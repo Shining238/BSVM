@@ -1,5 +1,6 @@
 #include "common.h"
 #include "vm.h"
+#include "cpu.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,12 @@ void initVM(struct VM *vm){
     vm->pc = 0;
     vm->sr = 0x10;
     vm->running = 1;
+}
+
+VM_Error vm_run(struct VM *vm){
+    VM_Error status;
+    while (((status = cpu_step(vm)) == VM_OK) && vm->running);
+    return status;
 }
 
 char *errorToString(VM_Error status){

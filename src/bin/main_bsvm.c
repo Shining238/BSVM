@@ -40,7 +40,7 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
-    while (((status = cpu_step(&vm)) == VM_OK) && vm.running);
+    status = vm_run(&vm);
 
     if (status != VM_OK){
         error_string = errorToString(status);

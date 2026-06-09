@@ -39,6 +39,8 @@ char *errorToString(VM_Error status);
 
 void initVM(struct VM *vm);
 
+VM_Error vm_run(struct VM *vm);
+
 void printVM(struct VM *vm);
 
 

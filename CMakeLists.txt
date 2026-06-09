@@ -1,21 +1,38 @@
 cmake_minimum_required(VERSION 3.10)
-project(CustomVM)
-
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+project(BSVM)
 
 
-set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Og -g -Wall -Wextra -Wunused -Iinclude -Wpedantic -fsanitize=address,leak,undefined,signed-integer-overflow,bounds-strict)
 add_link_options(-fsanitize=address,leak,undefined)
 
-file(GLOB_RECURSE C_SOURCES "src/*.c")
-list(FILTER C_SOURCES EXCLUDE REGEX ".*/main_bsvm\\.c$")
+add_library(core
+    src/format/binary.c
+)
 
-add_library(custom_vm ${C_SOURCES})
+target_include_directories(core PUBLIC include)
 
-target_include_directories(custom_vm PUBLIC include)
+add_executable(bsvm
+    src/bin/main_bsvm.c
+    src/runtime/cpu.c
+    src/runtime/instructions_codec.c
+    src/runtime/instructions.c
+    src/runtime/instructions.c
+    src/runtime/loader.c
+    src/runtime/memory.c
+    src/runtime/vm.c
+)
 
-add_executable(bsvm src/main_bsvm.c)
-target_link_libraries(bsvm PUBLIC custom_vm m)
+target_link_libraries(bsvm PRIVATE core)
+target_include_directories(bsvm PRIVATE include)
+
+add_executable(bsm
+    src/bin/main_bsm.c
+    src/toolchain/parser.c
+)
+
+target_link_libraries(bsm PRIVATE core)
+target_include_directories(bsm PRIVATE include)

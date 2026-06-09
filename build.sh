@@ -1,7 +1,4 @@
 #!/bin/bash
 
-mkdir -p build
-cd build
-cmake ..
-cmake --build . --target bsvm
-
+cmake -S . -B build
+cmake --build build
