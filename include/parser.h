@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define INSTR_LEN 255
+
 typedef enum {
     IR_INSTR,
     IR_LABEL,
