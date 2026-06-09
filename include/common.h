@@ -1,6 +1,6 @@
 #pragma once 
 
-#define MEM_SIZE 512 // < 2^32
+#define MEM_SIZE 512 // < 2^64
 #define STACK_BASE 256
 #define DATA_BASE 128
 #define N_REG 2 // < 256
