@@ -7,6 +7,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+int codecB(const struct Instruction *instr){
+    return (instr->mode == REG) || (instr->mode == IND) || (instr->mode == IDX);
+}
+
+int codecARGS(const struct Instruction *instr){
+    return (instr->mode == IMM) || (instr->mode == IDX) || (instr->mode == DIR);
+}
+
 size_t instructionEncode(const struct Instruction *instr, uint8_t *buffer, size_t remaining){
     if (instr->opcode >= OP_COUNT){
         fprintf(stderr, "OPCODE invalide\n");
@@ -33,7 +41,7 @@ size_t instructionEncode(const struct Instruction *instr, uint8_t *buffer, size_
     else {
         return 0;
     }
-    if (instr->mode != IMM){
+    if (codecB(instr)){
         if (remaining >= 1){
             buffer[i++] = instr->b;
             remaining --;
@@ -43,7 +51,7 @@ size_t instructionEncode(const struct Instruction *instr, uint8_t *buffer, size_
         }
     }
 
-    if (instr->mode != REG){
+    if (codecARGS(instr)){
         if (remaining >= 8){
             for (size_t j = 0; j < 8; j++){
                 buffer[i++] = (uint8_t) (((instr->mode == IMM) ? instr->args.imm : instr->args.offset) >> (j * 8));
@@ -80,13 +88,13 @@ size_t instructionDecode(struct Instruction *instr, uint8_t *buffer, size_t rema
     }
 
     instr->a = buffer[i++];
-    if (instr->mode != IMM){
+    if (codecB(instr)){
         instr->b = buffer[i++];
     }
 
-    if (instr->mode != REG){
+    if (codecARGS(instr)){
         for (size_t j = 0; j < 8; j++){
-            if (instr->mode == OFF){
+            if (instr->mode == IDX){
                 instr->args.offset |= ((uint64_t) buffer[i++]) << (j * 8);
             }
             else {

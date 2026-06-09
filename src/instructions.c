@@ -1800,126 +1800,251 @@ VM_Error instrHALT(struct VM *vm, const struct Instruction *instr){
     return VM_OK;
 }
 
-static InstrHandler dispatch[OP_COUNT] = {
-    [OP_ADD] = instrADD,
-    [OP_ADDR] = instrADDR,
-    [OP_ADDD] = instrADDD,
-    [OP_ADDI] = instrADDI,
-    [OP_ADDX] = instrADDX,
-    [OP_SUB] = instrSUB,
-    [OP_SUBR] = instrSUBR,
-    [OP_SUBD] = instrSUBD,
-    [OP_SUBI] = instrSUBI,
-    [OP_SUBX] = instrSUBX,
-    [OP_MUL] = instrMUL,
-    [OP_MULR] = instrMULR,
-    [OP_MULD] = instrMULD,
-    [OP_MULI] = instrMULI,
-    [OP_MULX] = instrMULX,
-    [OP_DIV] = instrDIV,
-    [OP_DIVR] = instrDIVR,
-    [OP_DIVD] = instrDIVD,
-    [OP_DIVI] = instrDIVI,
-    [OP_DIVX] = instrDIVX,
-    [OP_CMP] = instrCMP,
-    [OP_CMPR] = instrCMPR,
-    [OP_CMPD] = instrCMPD,
-    [OP_CMPI] = instrCMPI,
-    [OP_CMPX] = instrCMPX,
-    [OP_NEG] = instrNEG,
-    [OP_AND] = instrAND,
-    [OP_ANDR] = instrANDR,
-    [OP_ANDD] = instrANDD,
-    [OP_ANDI] = instrANDI,
-    [OP_ANDX] = instrANDX,
-    [OP_OR] = instrOR,
-    [OP_ORR] = instrORR,
-    [OP_ORD] = instrORD,
-    [OP_ORI] = instrORI,
-    [OP_ORX] = instrORX,
-    [OP_XOR] = instrXOR,
-    [OP_XORR] = instrXORR,
-    [OP_XORD] = instrXORD,
-    [OP_XORI] = instrXORI,
-    [OP_XORX] = instrXORX,
-    [OP_SHL] = instrSHL,
-    [OP_SHLR] = instrSHLR,
-    [OP_SHLD] = instrSHLD,
-    [OP_SHLI] = instrSHLI,
-    [OP_SHLX] = instrSHLX,
-    [OP_SHR] = instrSHR,
-    [OP_SHRR] = instrSHRR,
-    [OP_SHRD] = instrSHRD,
-    [OP_SHRI] = instrSHRI,
-    [OP_SHRX] = instrSHRX,
-    [OP_NOT] = instrNOT,
-    [OP_STD] = instrSTD,
-    [OP_STI] = instrSTI,
-    [OP_STX] = instrSTX,
-    [OP_LD] = instrLD,
-    [OP_LDR] = instrLDR,
-    [OP_LDD] = instrLDD,
-    [OP_LDI] = instrLDI,
-    [OP_LDX] = instrLDX,
-    [OP_SWPR] = instrSWPR,
-    [OP_SWPD] = instrSWPD,
-    [OP_SWPI] = instrSWPI,
-    [OP_SWPX] = instrSWPX,
-    [OP_PUSH] = instrPUSH,
-    [OP_POP] = instrPOP,
-    [OP_FASD] = instrFASD,
-    [OP_FASI] = instrFASI,
-    [OP_FASX] = instrFASX,
-    [OP_CALL] = instrCALL,
-    [OP_CALLR] = instrCALLR,
-    [OP_CALLD] = instrCALLD,
-    [OP_CALLI] = instrCALLI,
-    [OP_CALLX] = instrCALLX,
-    [OP_RTN] = instrRTN,
-    [OP_NOP] = instrNOP,
-    [OP_JMP] = instrJMP,
-    [OP_JMPR] = instrJMPR,
-    [OP_JMPD] = instrJMPD,
-    [OP_JMPI] = instrJMPI,
-    [OP_JMPX] = instrJMPX,
-    [OP_JEQ] = instrJEQ,
-    [OP_JEQR] = instrJEQR,
-    [OP_JEQD] = instrJEQD,
-    [OP_JEQI] = instrJEQI,
-    [OP_JEQX] = instrJEQX,
-    [OP_JNE] = instrJNE,
-    [OP_JNER] = instrJNER,
-    [OP_JNED] = instrJNED,
-    [OP_JNEI] = instrJNEI,
-    [OP_JNEX] = instrJNEX,
-    [OP_JLE] = instrJLE,
-    [OP_JLER] = instrJLER,
-    [OP_JLED] = instrJLED,
-    [OP_JLEI] = instrJLEI,
-    [OP_JLEX] = instrJLEX,
-    [OP_JLT] = instrJLT,
-    [OP_JLTR] = instrJLTR,
-    [OP_JLTD] = instrJLTD,
-    [OP_JLTI] = instrJLTI,
-    [OP_JLTX] = instrJLTX,
-    [OP_JGE] = instrJGE,
-    [OP_JGER] = instrJGER,
-    [OP_JGED] = instrJGED,
-    [OP_JGEI] = instrJGEI,
-    [OP_JGEX] = instrJGEX,
-    [OP_JGT] = instrJGT,
-    [OP_JGTR] = instrJGTR,
-    [OP_JGTD] = instrJGTD,
-    [OP_JGTI] = instrJGTI,
-    [OP_JGTX] = instrJGTX,
-    [OP_HALT] = instrHALT,
-    [OP_RST] = instrRST
+//static InstrHandler dispatch[OP_COUNT] = {
+static InstrHandler dispatchADD[MODE_COUNT] = {
+    [IMM] = instrADD,
+    [REG] = instrADDR,
+    [DIR] = instrADDD,
+    [IND] = instrADDI,
+    [IDX] = instrADDX
+};
+
+static InstrHandler dispatchSUB[MODE_COUNT] = {
+    [IMM] = instrSUB,
+    [REG] = instrSUBR,
+    [DIR] = instrSUBD,
+    [IND] = instrSUBI,
+    [IDX] = instrSUBX
+};
+
+static InstrHandler dispatchMUL[MODE_COUNT] = {
+    [IMM] = instrMUL,
+    [REG] = instrMULR,
+    [DIR] = instrMULD,
+    [IND] = instrMULI,
+    [IDX] = instrMULX
+};
+
+static InstrHandler dispatchDIV[MODE_COUNT] = {
+    [IMM] = instrDIV,
+    [REG] = instrDIVR,
+    [DIR] = instrDIVD,
+    [IND] = instrDIVI,
+    [IDX] = instrDIVX
+};
+
+static InstrHandler dispatchCMP[MODE_COUNT] = {
+    [IMM] = instrCMP,
+    [REG] = instrCMPR,
+    [DIR] = instrCMPD,
+    [IND] = instrCMPI,
+    [IDX] = instrCMPX
+};
+
+static InstrHandler dispatchNEG[MODE_COUNT] = {
+    [REG] = instrNEG
+};
+
+static InstrHandler dispatchAND[MODE_COUNT] = {
+    [IMM] = instrAND,
+    [REG] = instrANDR,
+    [DIR] = instrANDD,
+    [IND] = instrANDI,
+    [IDX] = instrANDX
+};
+
+static InstrHandler dispatchOR[MODE_COUNT] = {
+    [IMM] = instrOR,
+    [REG] = instrORR,
+    [DIR] = instrORD,
+    [IND] = instrORI,
+    [IDX] = instrORX
+};
+
+static InstrHandler dispatchXOR[MODE_COUNT] = {
+    [IMM] = instrXOR,
+    [REG] = instrXORR,
+    [DIR] = instrXORD,
+    [IND] = instrXORI,
+    [IDX] = instrXORX
+};
+
+static InstrHandler dispatchSHL[MODE_COUNT] = {
+    [IMM] = instrSHL,
+    [REG] = instrSHLR,
+    [DIR] = instrSHLD,
+    [IND] = instrSHLI,
+    [IDX] = instrSHLX
+};
+
+static InstrHandler dispatchSHR[MODE_COUNT] = {
+    [IMM] = instrSHR,
+    [REG] = instrSHRR,
+    [DIR] = instrSHRD,
+    [IND] = instrSHRI,
+    [IDX] = instrSHRX
+};
+
+static InstrHandler dispatchNOT[MODE_COUNT] = {
+    [REG] = instrNOT
+};
+
+static InstrHandler dispatchST[MODE_COUNT] = {
+    [DIR] = instrSTD,
+    [IND] = instrSTI,
+    [IDX] = instrSTX
+};
+
+static InstrHandler dispatchLD[MODE_COUNT] = {
+    [IMM] = instrLD,
+    [REG] = instrLDR,
+    [DIR] = instrLDD,
+    [IND] = instrLDI,
+    [IDX] = instrLDX
+};
+
+static InstrHandler dispatchSWP[MODE_COUNT] = {
+    [REG] = instrSWPR,
+    [DIR] = instrSWPD,
+    [IND] = instrSWPI,
+    [IDX] = instrSWPX
+};
+
+static InstrHandler dispatchPUSH[MODE_COUNT] = {
+    [REG] = instrPUSH
+};
+
+static InstrHandler dispatchPOP[MODE_COUNT] = {
+    [REG] = instrPOP
+};
+
+static InstrHandler dispatchFAS[MODE_COUNT] = {
+    [DIR] = instrFASD,
+    [IND] = instrFASI,
+    [IDX] = instrFASX
+};
+
+static InstrHandler dispatchCALL[MODE_COUNT] = {
+    [IMM] = instrCALL,
+    [REG] = instrCALLR,
+    [DIR] = instrCALLD,
+    [IND] = instrCALLI,
+    [IDX] = instrCALLX
+};
+
+static InstrHandler dispatchRTN[MODE_COUNT] = {
+    [NONE] = instrRTN
+};
+
+static InstrHandler dispatchNOP[MODE_COUNT] = {
+    [NONE] = instrNOP
+};
+
+static InstrHandler dispatchJMP[MODE_COUNT] = {
+    [IMM] = instrJMP,
+    [REG] = instrJMPR,
+    [DIR] = instrJMPD,
+    [IND] = instrJMPI,
+    [IDX] = instrJMPX
+};
+
+static InstrHandler dispatchJEQ[MODE_COUNT] = {
+    [IMM] = instrJEQ,
+    [REG] = instrJEQR,
+    [DIR] = instrJEQD,
+    [IND] = instrJEQI,
+    [IDX] = instrJEQX
+};
+
+static InstrHandler dispatchJNE[MODE_COUNT] = {
+    [IMM] = instrJNE,
+    [REG] = instrJNER,
+    [DIR] = instrJNED,
+    [IND] = instrJNEI,
+    [IDX] = instrJNEX
+};
+
+static InstrHandler dispatchJLE[MODE_COUNT] = {
+    [IMM] = instrJLE,
+    [REG] = instrJLER,
+    [DIR] = instrJLED,
+    [IND] = instrJLEI,
+    [IDX] = instrJLEX
+};
+
+static InstrHandler dispatchJLT[MODE_COUNT] = {
+    [IMM] = instrJLT,
+    [REG] = instrJLTR,
+    [DIR] = instrJLTD,
+    [IND] = instrJLTI,
+    [IDX] = instrJLTX
+};
+
+static InstrHandler dispatchJGE[MODE_COUNT] = {
+    [IMM] = instrJGE,
+    [REG] = instrJGER,
+    [DIR] = instrJGED,
+    [IND] = instrJGEI,
+    [IDX] = instrJGEX
+};
+
+static InstrHandler dispatchJGT[MODE_COUNT] = {
+    [IMM] = instrJGT,
+    [REG] = instrJGTR,
+    [DIR] = instrJGTD,
+    [IND] = instrJGTI,
+    [IDX] = instrJGTX
+};
+
+static InstrHandler dispatchHALT[MODE_COUNT] = {
+    [NONE] = instrHALT
+};
+
+static InstrHandler dispatchRST[MODE_COUNT] = {
+    [NONE] = instrRST
+};
+
+static InstrHandler *dispatch[OP_COUNT] = {
+   [OP_ADD] = dispatchADD,
+   [OP_SUB] = dispatchSUB,
+   [OP_MUL] = dispatchMUL,
+   [OP_DIV] = dispatchDIV,
+   [OP_CMP] = dispatchCMP,
+   [OP_NEG] = dispatchNEG,
+   [OP_AND] = dispatchAND,
+   [OP_OR] = dispatchOR,
+   [OP_XOR] = dispatchXOR,
+   [OP_NOT] = dispatchNOT,
+   [OP_SHL] = dispatchSHL,
+   [OP_SHR] = dispatchSHR,
+   [OP_ST] = dispatchST,
+   [OP_LD] = dispatchLD,
+   [OP_SWP] = dispatchSWP,
+   [OP_PUSH] = dispatchPUSH,
+   [OP_POP] = dispatchPOP,
+   [OP_FAS] = dispatchFAS,
+   [OP_CALL] = dispatchCALL,
+   [OP_RTN] = dispatchRTN,
+   [OP_NOP] = dispatchNOP,
+   [OP_RST] = dispatchRST,
+   [OP_JMP] = dispatchJMP,
+   [OP_JEQ] = dispatchJEQ,
+   [OP_JNE] = dispatchJEQ,
+   [OP_JLE] = dispatchJLE,
+   [OP_JLT] = dispatchJLT,
+   [OP_JGE] = dispatchJGE,
+   [OP_JGT] = dispatchJGT,
+   [OP_HALT] = dispatchHALT
 };
 
 
-InstrHandler get_handler(OP_CODE op_code){
+
+InstrHandler get_handler(OP_CODE op_code, MODE mode){
     if (op_code >= OP_COUNT){
         return NULL;
     }
-    return dispatch[op_code];
+    if (mode >= MODE_COUNT){
+        return NULL;
+    }
+    return dispatch[op_code][mode];
 }

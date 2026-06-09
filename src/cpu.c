@@ -21,7 +21,7 @@ VM_Error cpu_step(struct VM *vm){
 
     uint64_t old_pc = vm->pc;
 
-    InstrHandler handler = get_handler(instr.opcode);
+    InstrHandler handler = get_handler(instr.opcode, instr.mode);
     if (handler == NULL){
         return UNKNOWN_INSTR;
     }

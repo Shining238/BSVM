@@ -16,12 +16,12 @@ int main(){
 
     const struct Instruction i4 = {.opcode = OP_LD, .mode = IMM, .a = 0, .args.imm = 6};
     const struct Instruction i5 = {.opcode = OP_LD, .mode = IMM, .a = 1, .args.imm = 7};
-    const struct Instruction i6 = {.opcode = OP_ADDR, .mode = REG, .a = 0, .b = 1};
-    const struct Instruction i7 = {.opcode = OP_STD, .mode = IMM, .a = 0, .args.imm = 200};
+    const struct Instruction i6 = {.opcode = OP_ADD, .mode = REG, .a = 0, .b = 1};
+    const struct Instruction i7 = {.opcode = OP_ST, .mode = DIR, .a = 0, .args.imm = 200};
     const struct Instruction i8 = {.opcode = OP_LD, .mode = IMM, .a = 1, .args.imm = 200};
     const struct Instruction i9 = {.opcode = OP_PUSH, .mode = REG, .a = 1};
     const struct Instruction i10 = {.opcode = OP_CMP, .mode = IMM, .a = 0, .args.imm = 14};
-    const struct Instruction i11 = {.opcode = OP_JLT, .mode = IMM, .args.imm = 78};
+    const struct Instruction i11 = {.opcode = OP_JLT, .mode = IMM, .args.imm = 0};
     const struct Instruction i12 = {.opcode = OP_HALT, .mode = NONE};
     const struct Instruction nop = {.opcode = OP_NOP, .mode = NONE};
 
@@ -38,7 +38,7 @@ int main(){
         i12
     };
 
-    const struct Instruction i1 = {.opcode = OP_LDI, .mode = REG, .a = 0, .b = 1};
+    const struct Instruction i1 = {.opcode = OP_LD, .mode = IND, .a = 0, .b = 1};
     const struct Instruction i2 = {.opcode = OP_ADD, .mode = IMM, .a = 0, .args.imm = 1};
     const struct Instruction i3 = {.opcode = OP_HALT, .mode = NONE};
 
@@ -49,19 +49,24 @@ int main(){
     };
 
     struct Instruction program[13] = {0};
-    memcpy(program, start, sizeof(start));
-    memcpy(program + 10, label1, sizeof(label1));
+    memcpy(program, label1, sizeof(label1));
+    memcpy(program + 3, start, sizeof(start));
+
+    //memcpy(program, start, sizeof(start));
+    //memcpy(program+10, label1, sizeof(label1));
 
     size_t prog_size = totalProgSize(program, 13);
     uint8_t bytecode[DATA_BASE] = {0};
+    uint8_t data[STACK_BASE - DATA_BASE] = {0};
     size_t written = encodeProgram(program, 13, bytecode);
 
-    struct BinaryHeader headers = {.magic_number=MAGIC_NUMBER, .entry_point=0, .code_size=written};
-    struct Binary bin = {.headers=headers, .bytecode=bytecode};
+    struct BinaryHeader headers = {.magic_number=MAGIC_NUMBER, .entry_point=17, .code_size=written, .data_size=0};
+    struct Binary bin = {.headers=headers, .bytecode=bytecode, .data=data};
 
     writeBinaryFile("out.bsin", &bin);
 
-    struct Binary out;
+    uint8_t out_buffer[DATA_BASE];
+    struct Binary out = {.bytecode = out_buffer, .data = data};
     readBinaryFile("out.bsin", &out);
     if (out.headers.magic_number != bin.headers.magic_number){
         fprintf(stderr, "Wrong magic number\n");
@@ -75,6 +80,11 @@ int main(){
         fprintf(stderr, "Wrong code size\n");
         exit(EXIT_FAILURE);
     }
+    if (out.headers.data_size != bin.headers.data_size){
+        fprintf(stderr, "Wrong code size\n");
+        exit(EXIT_FAILURE);
+    }
+ 
     for (size_t i = 0; i < out.headers.code_size; i++){
         if (out.bytecode[i] != bin.bytecode[i]){
             fprintf(stderr, "Corruption du bytecode\n");
@@ -82,15 +92,24 @@ int main(){
         }
     }
 
+    for (size_t i = 0; i < out.headers.data_size; i++){
+        if (out.data[i] != bin.data[i]){
+            fprintf(stderr, "Corruption du segment data\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    printf("lecture ecriture ok\n");
+
     if (prog_size != written){
-        fprintf(stderr, "Erreur lors de l'encodage du programme\n");
+        fprintf(stderr, "Erreur lors de l'encodage du programme %lu != %lu\n", written, prog_size);
         exit(EXIT_FAILURE);
     }
 
-    VM_Error status = loadProgram(&vm, bytecode, written, 0);
+    VM_Error status = loadProgram(&vm, &bin, 0);
     char *error_string;
-    if (status == LOAD_OUT_OF_BOUNDS){
-        fprintf(stderr, "Program out of bounds\n");
+    if (status != VM_OK){
+        error_string = errorToString(status);
+        free(error_string);
         exit(EXIT_FAILURE);
     }
 

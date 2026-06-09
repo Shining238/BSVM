@@ -37,18 +37,18 @@ size_t encodeProgram(const struct Instruction *program, size_t prog_size, uint8_
     return cursor;
 }
 
-VM_Error loadProgram(struct VM *vm, struct Binary *bin){
+VM_Error loadProgram(struct VM *vm, struct Binary *bin, size_t start){
    
     struct BinaryHeader *headers = &bin->headers;
-    if (headers->code_size >= DATA_BASE){
+    if (headers->code_size + start >= DATA_BASE){
         return CODE_LOAD_OUT_OF_BOUNDS;
     }
-    if (headers->data_size >= STACK_BASE){
+    if (headers->data_size >= STACK_BASE - DATA_BASE){
         return DATA_LOAD_OUT_OF_BOUNDS;
     }
 
-    memcpy(vm->memory, bin->bytecode, headers->code_size);
-    memcpy(vm->memory, bin->data, headers->data_size);
+    memcpy(vm->memory + start, bin->bytecode, headers->code_size);
+    memcpy(vm->memory + DATA_BASE, bin->data, headers->data_size);
 
     vm->pc = headers->entry_point;
 
