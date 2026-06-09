@@ -30,7 +30,8 @@ char *errorToString(VM_Error status){
         case STACK_UNDERFLOW: memcpy(str, "Stack Underflow", 16); break;
         case STACK_OVERFLOW: memcpy(str, "Stack Overflow", 15); break;
         case INVALID_JMP: memcpy(str, "Jump hors du segment de code", 29); break;
-        case LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment code insuffisant", 35); break;
+        case CODE_LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment code insuffisant", 35); break;
+        case DATA_LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment data insuffisant", 35); break;
         case INVALID_EXECUTION_ADDRESS: memcpy(str, "PC pointe hors du segment de code", 34); break;
         case TRUNCATED_INSTR: memcpy(str, "Instruction tronquée", 22); break;
         case UNKNOWN_INSTR: memcpy(str, "Instruction indéfinie", 23); break;

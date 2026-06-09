@@ -4,6 +4,7 @@
 #include "instructions.h"
 #include "instructions_codec.h"
 #include "memory.h"
+#include "binary.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -36,14 +37,20 @@ size_t encodeProgram(const struct Instruction *program, size_t prog_size, uint8_
     return cursor;
 }
 
-VM_Error loadProgram(struct VM *vm, uint8_t *bytecode, size_t size, uint64_t start){
-    
-    if (start + size >= DATA_BASE){
-        return LOAD_OUT_OF_BOUNDS;
+VM_Error loadProgram(struct VM *vm, struct Binary *bin){
+   
+    struct BinaryHeader *headers = &bin->headers;
+    if (headers->code_size >= DATA_BASE){
+        return CODE_LOAD_OUT_OF_BOUNDS;
+    }
+    if (headers->data_size >= STACK_BASE){
+        return DATA_LOAD_OUT_OF_BOUNDS;
     }
 
-    memcpy(vm->memory + start, bytecode, size);
-    vm->pc = start;
-    
+    memcpy(vm->memory, bin->bytecode, headers->code_size);
+    memcpy(vm->memory, bin->data, headers->data_size);
+
+    vm->pc = headers->entry_point;
+
     return VM_OK;
 }
