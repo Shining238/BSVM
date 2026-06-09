@@ -29,19 +29,19 @@ char *errorToString(VM_Error status){
     char *str = malloc(64);
     switch (status){
         case VM_OK: memcpy(str, "VM OK", 6); break;
-        case DIV_0: memcpy(str, "Division par zero", 18); break;
-        case INSTR_PRIV: memcpy(str, "Instruction privilégiée", 26); break;
-        case INSTR_TRAP: memcpy(str, "Instruction TRAP", 17); break;
-        case ILL_MEM_ACCESS: memcpy(str, "Accès mémoire illégal", 25); break;
-        case ILL_REGISTER: memcpy(str, "Registre invalide", 18); break;
-        case STACK_UNDERFLOW: memcpy(str, "Stack Underflow", 16); break;
-        case STACK_OVERFLOW: memcpy(str, "Stack Overflow", 15); break;
-        case INVALID_JMP: memcpy(str, "Jump hors du segment de code", 29); break;
-        case CODE_LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment code insuffisant", 35); break;
-        case DATA_LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment data insuffisant", 35); break;
-        case INVALID_EXECUTION_ADDRESS: memcpy(str, "PC pointe hors du segment de code", 34); break;
-        case TRUNCATED_INSTR: memcpy(str, "Instruction tronquée", 22); break;
-        case UNKNOWN_INSTR: memcpy(str, "Instruction indéfinie", 23); break;
+        case VM_DIV_ZERO: memcpy(str, "Division par zero", 18); break;
+        case VM_INSTR_PRIV: memcpy(str, "Instruction privilégiée", 26); break;
+        case VM_INSTR_TRAP: memcpy(str, "Instruction TRAP", 17); break;
+        case VM_ILL_MEM_ACCESS: memcpy(str, "Accès mémoire illégal", 25); break;
+        case VM_ILL_REGISTER: memcpy(str, "Registre invalide", 18); break;
+        case VM_STACK_UNDERFLOW: memcpy(str, "Stack Underflow", 16); break;
+        case VM_STACK_OVERFLOW: memcpy(str, "Stack Overflow", 15); break;
+        case VM_INVALID_JMP: memcpy(str, "Jump hors du segment de code", 29); break;
+        case VM_CODE_LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment code insuffisant", 35); break;
+        case VM_DATA_LOAD_OUT_OF_BOUNDS: memcpy(str, "Espace du segment data insuffisant", 35); break;
+        case VM_INVALID_EXECUTION_ADDRESS: memcpy(str, "PC pointe hors du segment de code", 34); break;
+        case VM_TRUNCATED_INSTR: memcpy(str, "Instruction tronquée", 22); break;
+        case VM_UNKNOWN_INSTR: memcpy(str, "Instruction indéfinie", 23); break;
         default: memcpy(str, "Something went really wrong :(", 31); break;
     }
     return str;

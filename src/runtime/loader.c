@@ -41,10 +41,10 @@ VM_Error loadProgram(struct VM *vm, struct Binary *bin, size_t start){
    
     struct BinaryHeader *headers = &bin->headers;
     if (headers->code_size + start >= DATA_BASE){
-        return CODE_LOAD_OUT_OF_BOUNDS;
+        return VM_CODE_LOAD_OUT_OF_BOUNDS;
     }
     if (headers->data_size >= STACK_BASE - DATA_BASE){
-        return DATA_LOAD_OUT_OF_BOUNDS;
+        return VM_DATA_LOAD_OUT_OF_BOUNDS;
     }
 
     memcpy(vm->memory + start, bin->bytecode, headers->code_size);

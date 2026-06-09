@@ -41,22 +41,22 @@ typedef enum {
 } OP_CODE;
 
 typedef enum {
-    NONE,
-    IMM,
-    REG,
-    DIR,
-    IND,
-    IDX,
+    MODE_NONE,
+    MODE_IMM,
+    MODE_REG,
+    MODE_DIR,
+    MODE_IND,
+    MODE_IDX,
     MODE_COUNT
 } MODE;
 
 static size_t mode_size[MODE_COUNT] = {
-    [NONE] = 2,
-    [IMM] = 11,
-    [REG] = 4,
-    [DIR] = 11,
-    [IND] = 4,
-    [IDX] = 12
+    [MODE_NONE] = 2,
+    [MODE_IMM] = 11,
+    [MODE_REG] = 4,
+    [MODE_DIR] = 11,
+    [MODE_IND] = 4,
+    [MODE_IDX] = 12
 };
 
 _Static_assert(OP_COUNT <= 256, "Too many op_codes\n");

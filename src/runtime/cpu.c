@@ -10,20 +10,20 @@
 VM_Error cpu_step(struct VM *vm){
 
     if (vm->pc >= DATA_BASE){
-        return INVALID_EXECUTION_ADDRESS;
+        return VM_INVALID_EXECUTION_ADDRESS;
     }
     struct Instruction instr;
 
     size_t consumed = instructionDecode(&instr, vm->memory + vm->pc, DATA_BASE - vm->pc - 1);
     if (consumed != mode_size[instr.mode]){
-        return TRUNCATED_INSTR;
+        return VM_TRUNCATED_INSTR;
     }
 
     uint64_t old_pc = vm->pc;
 
     InstrHandler handler = get_handler(instr.opcode, instr.mode);
     if (handler == NULL){
-        return UNKNOWN_INSTR;
+        return VM_UNKNOWN_INSTR;
     }
 
     VM_Error status = handler(vm, &instr);
