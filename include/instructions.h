@@ -43,6 +43,7 @@ typedef enum {
 typedef enum {
     MODE_NONE,
     MODE_IMM,
+    MODE_REGU,
     MODE_REG,
     MODE_DIR,
     MODE_IND,
@@ -53,6 +54,7 @@ typedef enum {
 static size_t mode_size[MODE_COUNT] = {
     [MODE_NONE] = 2,
     [MODE_IMM] = 11,
+    [MODE_REGU] = 3,
     [MODE_REG] = 4,
     [MODE_DIR] = 11,
     [MODE_IND] = 4,

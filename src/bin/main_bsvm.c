@@ -11,7 +11,7 @@
 
 void usage(char *prog){
     printf("usage : %s <file.bsin>\n", prog);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 

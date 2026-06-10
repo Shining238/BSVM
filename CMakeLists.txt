@@ -4,9 +4,10 @@ project(BSVM)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options(-Og -g -Wall -Wextra -Wunused -Iinclude -Wpedantic -fsanitize=address,leak,undefined,signed-integer-overflow,bounds-strict)
+add_compile_options(-Og -g -Wall -Wextra -Wunused -Iinclude -fsanitize=address,leak,undefined,signed-integer-overflow,bounds-strict)
 add_link_options(-fsanitize=address,leak,undefined)
 
 add_library(core

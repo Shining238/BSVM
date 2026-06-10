@@ -13,60 +13,70 @@ typedef enum {
 } IRType;
 
 typedef enum {
-    DIR_WORD,
     DIR_STRING,
-    DIR_ADDR,
+    DIR_VALUE,
     DIR_UNDEF
 } DirType;
 
 typedef enum {
-    PARSER_INVALID_TYPE,
-    PARSER_INVALID_OP,
-    PARSER_OK
+    PARSER_UNKNOWN_INSTR,
+    PARSER_SYNTAX_ERROR,
+    PARSER_TOO_MANY_OPE,
+    PARSER_TOO_FEW_OPE,
+    PARSER_OK,
+    PARSER_EMPTY
 } ParserError;
 
 typedef enum {
     OPERAND_NONE,
-    OPERAND_IMM,
+    OPERAND_VALUE,
     OPERAND_REG,
     OPERAND_LABEL,
-    OP_MEM
+    OPERAND_STRING,
+    OPERAND_MEM_IDX,
+    OPERAND_MEM_STR
 } OperandType;
 
 typedef struct {
     OperandType type;
     union {
         uint8_t reg;
-        int64_t imm;
-        char label[64];
+        int64_t value;
+        char *str;
 
         struct {
-            uint8_t base_reg;
+            struct {
+                union {
+                    char *label;
+                    uint8_t base_reg;
+                };
             int64_t offset;
+            } idx;
         } mem;
     };
-} Operand;
+ } Operand;
 
 struct IR_Node {
     IRType type;
 
     union {
         struct {
-            char name[64];
+            Operand name;
         } label;
 
         struct {
             OP_CODE op;
+            MODE mode;
             Operand a;
             Operand b;
         } instr;
 
         struct {
             DirType type;
+            char *op;
             union {
-                char str[128];
-                int64_t word;
-                uint64_t addr;
+                Operand value;
+                Operand string;
             };
         } directive;
     };
@@ -77,4 +87,6 @@ typedef struct OpMap {
     OP_CODE op;
 } OpMap;
 
-struct IR_Node *parser(char *filename);
+struct IR_Node *parser(char *filename, size_t *n);
+
+void free_IRNode(struct IR_Node *IR);
