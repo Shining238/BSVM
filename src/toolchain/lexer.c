@@ -62,6 +62,11 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
     if (*lexer->cursor == 'R'){
         lexer->cursor++;
         while (*lexer->cursor && isdigit(*lexer->cursor)){
+            if ((__int128_t)(reg * 10) > INT64_MAX){
+                *status = LEXER_INVALID_TOKEN;
+                lexer->column += len+2;
+                return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column};
+            }
             reg = reg * 10 + (*lexer->cursor - '0');
             lexer->cursor++;
             len++;
@@ -79,6 +84,11 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
         value = (*lexer->cursor - '0'); 
         lexer->cursor++;
         while (*lexer->cursor && isdigit(*lexer->cursor)){
+            if ((__int128_t)(value * 10) > INT64_MAX){
+                *status = LEXER_INVALID_TOKEN;
+                lexer->column += len+2;
+                return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column};
+            }
             value = value * 10 + (*lexer->cursor - '0');
             len++;
             lexer->cursor++;
@@ -92,7 +102,7 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
     //string
     if (*lexer->cursor == '\"'){
         start++;
-        *lexer->cursor++;
+        lexer->cursor++;
         while (*lexer->cursor && (*lexer->cursor != '\"')){
             *lexer->cursor++;
             len++;
@@ -102,7 +112,7 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
             lexer->column += len+1;
             return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column};
         }
-        *lexer->cursor++;
+        lexer->cursor++;
         column = lexer->column;
         lexer->column += len + 2;
         *status = LEXER_OK;
@@ -111,10 +121,10 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
 
     //identifier
     if (islower(*lexer->cursor)){
-        *lexer->cursor++;
+        lexer->cursor++;
         len++;
         while (*lexer->cursor && ((isalnum(*lexer->cursor)) || (*lexer->cursor == '_'))){
-            *lexer->cursor++;
+            lexer->cursor++;
             len++;
         }
         column = lexer->column;
@@ -125,10 +135,10 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
 
     //mnemonic
     if (isupper(*lexer->cursor)){
-        *lexer->cursor++;
+        lexer->cursor++;
         len++;
         while (*lexer->cursor && isupper(*lexer->cursor)){
-            *lexer->cursor++;
+            lexer->cursor++;
             len++;
         }
         column = lexer->column;

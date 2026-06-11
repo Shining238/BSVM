@@ -20,12 +20,15 @@ typedef enum {
 } DirType;
 
 typedef enum {
+    PARSER_INVALID_ARGS,
+    PARSER_INVALID_REGISTER,
     PARSER_UNKNOWN_DIR,
     PARSER_UNKNOWN_OP,
     PARSER_UNKNOWN_INSTR,
     PARSER_SYNTAX_ERROR,
     PARSER_TOO_MANY_OPE,
     PARSER_TOO_FEW_OPE,
+    PARSER_EMPTY,
     PARSER_OK
 } ParserError;
 
@@ -33,10 +36,13 @@ typedef enum {
     OPERAND_NONE,
     OPERAND_VALUE,
     OPERAND_REG,
-    OPERAND_LABEL,
+    OPERAND_IDENT,
     OPERAND_STRING,
+    OPERAND_MEM_IDENT,
+    OPERAND_MEM_VALUE,
+    OPERAND_MEM_REG,
     OPERAND_MEM_IDX,
-    OPERAND_MEM_STR
+    OPERAND_MEM_IDX_IDENT
 } OperandType;
 
 typedef struct {
@@ -44,16 +50,20 @@ typedef struct {
     union {
         uint8_t reg;
         int64_t value;
-        char *str;
+        struct {
+            char *str;
+            size_t length;
+        } ident;
 
         struct {
-            struct {
-                union {
-                    char *label;
-                    uint8_t base_reg;
-                };
+            union {
+                uint8_t base_reg;
+                struct {
+                    char *str;
+                    size_t length;
+                } ident;
+            };
             int64_t offset;
-            } idx;
         } mem;
     };
  } Operand;
@@ -68,7 +78,6 @@ struct IR_Node {
 
         struct {
             OP_CODE op;
-            MODE mode;
             Operand a;
             Operand b;
         } instr;
@@ -94,5 +103,7 @@ typedef struct DirMap {
 } DirMap;
 
 struct IR_Node *parser(char *filename, size_t *n);
+
+void printIRNode(struct IR_Node *IR);
 
 void free_IRNode(struct IR_Node *IR);

@@ -32,6 +32,7 @@ target_include_directories(bsvm PRIVATE include)
 
 add_executable(bsm
     src/bin/main_bsm.c
+    src/toolchain/lexer.c
     src/toolchain/parser.c
 )
 
