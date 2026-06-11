@@ -43,7 +43,7 @@ static const OpMap op_map[OP_COUNT] = {
 
 void free_IRNode(struct IR_Node *IR){
     if (IR->type == IR_DIR){
-        if (IR->directive.string.type == OPERAND_STRING){
+        if ((IR->directive.string.type == OPERAND_STRING) || (IR->directive.string.type == OPERAND_LABEL)){
             free(IR->directive.string.str);
         }
         free(IR->directive.op);
@@ -97,10 +97,10 @@ ParserError tryParseDir(char *buffer, struct IR_Node *IR){
     int count = 0;
     if (((count = sscanf(buffer, ".%m[a-z]%c%ld%n", &op_name, &sep, &value, &n)) == 3)){
         if(!isEndOfInstr(buffer[n])){
+            free(op_name);
             return PARSER_TOO_MANY_OPE;
         }
         if (sep != ' '){
-            printf(".%s^\n", op_name);
             return PARSER_SYNTAX_ERROR;
         }
         IR->type = IR_DIR;
@@ -116,6 +116,39 @@ ParserError tryParseDir(char *buffer, struct IR_Node *IR){
         op_name = NULL;
     }
     sep = 0;
+    if (((count = sscanf(buffer, ".%m[a-z]%c%m[a-z]%n", &op_name, &sep, &str, &n)) == 3)){
+        if (isalnum(buffer[n])){
+            free(op_name);
+            free(str);
+            return PARSER_SYNTAX_ERROR;
+        }
+        if (!isEndOfInstr(buffer[n])){
+            free(op_name);
+            free(str);
+            return PARSER_TOO_MANY_OPE;
+        }
+        if (sep != ' '){
+            free(op_name);
+            free(str);
+            return PARSER_SYNTAX_ERROR;
+        }
+        IR->type = IR_DIR;
+        IR->directive.type = DIR_STRING;
+        IR->directive.string.type = OPERAND_LABEL;
+        IR->directive.string.str = str;
+        IR->directive.op = op_name;
+        return PARSER_OK;
+    }
+    if (op_name){
+        free(op_name);
+        op_name = NULL;
+    }
+    if (str){
+        free(str);
+        str = NULL;
+    }
+    sep = 0;
+
     if (((count = sscanf(buffer, ".%m[a-z]%c%c%m[^\"]%c%n", &op_name, &sep, &open_quote, &str, &close_quote, &n)) == 5)){
         if (!isEndOfInstr(buffer[n])){
             free(op_name);
@@ -517,12 +550,12 @@ ParserError parse_line(char *buffer, struct IR_Node *IR){
 
 void printStatus(ParserError status, size_t line){
     switch (status){
-            case PARSER_OK: printf("OK\n"); break;
-            case PARSER_TOO_MANY_OPE: printf("Error : too many arguments on line %lu\n", line); break;
-            case PARSER_SYNTAX_ERROR: printf("Syntax error on line %lu\n", line); break;
-            case PARSER_TOO_FEW_OPE: printf("Error : too few arguments on line %lu\n", line); break;
-            case PARSER_UNKNOWN_INSTR: printf("Error : unknown instruction on line %lu\n", line);
-            default: break;
+        case PARSER_OK: printf("OK\n"); break;
+        case PARSER_TOO_MANY_OPE: printf("Error : too many arguments on line %lu\n", line); break;
+        case PARSER_SYNTAX_ERROR: printf("Syntax error on line %lu\n", line); break;
+        case PARSER_TOO_FEW_OPE: printf("Error : too few arguments on line %lu\n", line); break;
+        case PARSER_UNKNOWN_INSTR: printf("Error : unknown instruction on line %lu\n", line);
+        default: break;
     }
 }
 
@@ -545,7 +578,7 @@ struct IR_Node *parser(char *filename, size_t *n){
     ParserError status;
 
     while (fgets(str, INSTR_LEN, file)){
-        printf("line : %lu |%s|", line+1, str);
+        printf("line : %lu |%s|\n", line+1, str);
         if (i == prog_size){
             tmp = realloc(IRList, 2 * prog_size);
             prog_size *= 2;
