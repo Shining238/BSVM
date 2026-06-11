@@ -1,11 +1,27 @@
 #include "parser.h"
 #include "instructions.h"
+#include "lexer.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+
+#define CHK_LEXER_STATUS(prog, status, tok) do {\
+    if (status != LEXER_OK){\
+        printLexerStatus(prog, status, tok);\
+        exit(EXIT_FAILURE);\
+    }\
+} while (0)
+
+#define CHK_PARSER_STATUS(prog, status, tok) do {\
+    if (status != PARSER_OK){\
+        printParserStatus(prog, status, tok);\
+        exit(EXIT_FAILURE);\
+    }\
+} while (0)
+
 
 static const OpMap op_map[OP_COUNT] = {
     {.mnemonic="ADD", .op=OP_ADD},
@@ -41,12 +57,18 @@ static const OpMap op_map[OP_COUNT] = {
 };
 
 
+static const DirMap dir_map[DIR_COUNT] = {
+    {.mnemonic="string", .dir=DIR_STRING},
+    {.mnemonic="addr", .dir=DIR_ADDR},
+    {.mnemonic="org", .dir=DIR_ORG},
+    {.mnemonic="word", .dir=DIR_WORD}
+};
+
 void free_IRNode(struct IR_Node *IR){
     if (IR->type == IR_DIR){
         if ((IR->directive.string.type == OPERAND_STRING) || (IR->directive.string.type == OPERAND_LABEL)){
             free(IR->directive.string.str);
         }
-        free(IR->directive.op);
     }
     else if (IR->type == IR_LABEL){
         free(IR->label.name.str);
@@ -68,500 +90,154 @@ void free_IRNode(struct IR_Node *IR){
 }
 
 //str must be null-terminated
-OP_CODE op_lookup(char *str){
+OP_CODE op_lookup(char *str, size_t len){
     
     for (size_t i = 0; i < OP_COUNT; i++){
-        if (!strcmp(op_map[i].mnemonic, str)){
+        if (!strncmp(op_map[i].mnemonic, str, len)){
             return op_map[i].op;
         }
     }
     return OP_COUNT;
 }
 
-int isEndOfInstr(char c){
-    return (c == '\n') || (c == '\0');
+//str must be null-terminated
+DirType dir_lookup(char *str, size_t len){
+
+    for (size_t i = 0; i < DIR_COUNT; i++){
+        if (!strncmp(dir_map[i].mnemonic, str, len)){
+            return dir_map[i].dir;
+        }
+    }
+    return DIR_COUNT;
 }
 
-ParserError tryParseDir(char *buffer, struct IR_Node *IR){
-
-    if (buffer[0] != '.'){
-        return PARSER_UNKNOWN_INSTR;
-    }
-    char *op_name = NULL;
-    int64_t value = 0;
-    int n = 0;
-    char *str = NULL;
-    char open_quote = 0;
-    char close_quote = 0;
-    char sep = 0;
-    int count = 0;
-    if (((count = sscanf(buffer, ".%m[a-z]%c%ld%n", &op_name, &sep, &value, &n)) == 3)){
-        if(!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-        if (sep != ' '){
-            return PARSER_SYNTAX_ERROR;
-        }
-        IR->type = IR_DIR;
-        IR->directive.type = DIR_VALUE;
-        IR->directive.value.type = OPERAND_VALUE;
-        IR->directive.value.value = value;
-        IR->directive.string.type = OPERAND_NONE;
-        IR->directive.op = op_name;
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-        op_name = NULL;
-    }
-    sep = 0;
-    if (((count = sscanf(buffer, ".%m[a-z]%c%m[a-z]%n", &op_name, &sep, &str, &n)) == 3)){
-        if (isalnum(buffer[n])){
-            free(op_name);
-            free(str);
-            return PARSER_SYNTAX_ERROR;
-        }
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            free(str);
-            return PARSER_TOO_MANY_OPE;
-        }
-        if (sep != ' '){
-            free(op_name);
-            free(str);
-            return PARSER_SYNTAX_ERROR;
-        }
-        IR->type = IR_DIR;
-        IR->directive.type = DIR_STRING;
-        IR->directive.string.type = OPERAND_LABEL;
-        IR->directive.string.str = str;
-        IR->directive.op = op_name;
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-        op_name = NULL;
-    }
-    if (str){
-        free(str);
-        str = NULL;
-    }
-    sep = 0;
-
-    if (((count = sscanf(buffer, ".%m[a-z]%c%c%m[^\"]%c%n", &op_name, &sep, &open_quote, &str, &close_quote, &n)) == 5)){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            free(str);
-            return PARSER_TOO_MANY_OPE;
-        }
-        
-        if ((sep != ' ') || (open_quote != '\"') || (close_quote != '\"')){
-            free(op_name);
-            free(str);
-            return PARSER_SYNTAX_ERROR;
-        }
-       
-        IR->type = IR_DIR;
-        IR->directive.type = DIR_STRING;
-        IR->directive.string.str = str;
-        IR->directive.value.type = OPERAND_NONE;
-        IR->directive.op = op_name;
-        return PARSER_OK;
-    }
-    if (isEndOfInstr(sep)){
-        return PARSER_TOO_FEW_OPE;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    if (str){
-        free(str);
-    }
-    if (count > 1){
-        return PARSER_SYNTAX_ERROR;
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-ParserError tryParseLabel(char *buffer, struct IR_Node *IR){
-    
-    char *op_name = NULL;
-    char colon = 0;
-    int n = 0;
-    int count = 0;
-    if (((count = sscanf(buffer, "%m[a-z0-9]%c%n", &op_name, &colon, &n)) == 2) && (colon == ':')){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        if (colon != ':'){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        IR->type = IR_LABEL;
-        IR->label.name.type = OPERAND_LABEL;
-        IR->label.name.str = op_name;
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    if (count > 1){
-        return PARSER_SYNTAX_ERROR;
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-ParserError tryParseIDX(char *buffer, struct IR_Node *IR){
-    char *op_name = NULL;
-    uint8_t a = 0;
-    uint8_t b = 0;
-    char sign = 0;
-    char sep1 = 0;
-    char sep2 = 0;
-    char open_bracket = 0;
-    char close_bracket = 0;
-    char comma = 0;
-    char r1 = 0;
-    char r2 = 0;
-    int n = 0;
-    int count = 0;
-    int64_t offset = 0;
-    if ((count = sscanf(buffer, "%m[A-Z]%c%c%hhu%c%c%c%c%hhu%c%ld%c%n", &op_name, &sep1, &r1, &a, &comma, &sep2, &open_bracket, &r2, &b, &sign, &offset, &close_bracket, &n)) == 12){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-        if ((open_bracket == 'R') || (sign == ']')){
-            free(op_name);
-            return PARSER_UNKNOWN_INSTR;
-        }
-        if (sign == '-'){
-            offset = -offset;
-        }
-        if ((sep1 != ' ') || (sep2 != ' ') || (comma != ',') || ((sign != '+') && (sign != '-')) || (open_bracket != '[') || (close_bracket != ']') || (r1 != 'R') || (r2 != 'R')){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_IDX;
-        IR->instr.a.type = OPERAND_REG;
-        IR->instr.a.reg = a;
-        IR->instr.b.type = OPERAND_MEM_IDX;
-        IR->instr.b.mem.idx.base_reg = b;
-        IR->instr.b.mem.idx.offset = offset;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-ParserError tryParseIND(char *buffer, struct IR_Node *IR){
-    char *op_name = NULL;
-    uint8_t a = 0;
-    uint8_t b =0;
-    char sep1 = 0;
-    char sep2 = 0;
-    char comma = 0;
-    char r1 = 0;
-    char r2 = 0;
-    char open_bracket = 0;
-    char close_bracket = 0;
-    int n = 0;
-    int count = 0;
-    if ((count = sscanf(buffer, "%m[A-Z]%c%c%hhu%c%c%c%c%hhu%c%n", &op_name, &sep1, &r1, &a, &comma, &sep2, &open_bracket, &r2, &b, &close_bracket, &n)) == 10){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-
-        if (open_bracket == 'R'){
-            return PARSER_UNKNOWN_INSTR;
-        }
-        if ((sep1 != ' ') || (r1 != 'R') || (comma != ',') || (r2 != 'R') || (sep2 != ' ') || (open_bracket != '[') || (close_bracket != ']')){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_IND;
-        IR->instr.a.type = OPERAND_REG;
-        IR->instr.b.type = OPERAND_REG;
-        IR->instr.a.reg = a;
-        IR->instr.b.reg = b;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-ParserError tryParseDIR(char *buffer, struct IR_Node *IR){
-    
-    char *op_name;
-    uint8_t a = 0;
-    uint64_t addr = 0;
-    char r = 0;
-    char sep1 = 0;
-    char sep2 = 0;
-    char open_bracket = 0;
-    char close_bracket = 0;
-    char comma = 0;
-    int count = 0;
-    int n = 0;
-    if ((count = sscanf(buffer, "%m[A-Z]%c%c%hhu%c%c%c%lu%c%n", &op_name, &sep1, &r, &a, &comma, &sep2, &open_bracket, &addr, &close_bracket, &n)) == 9){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-        if (open_bracket == 'R'){
-            free(op_name);
-            return PARSER_UNKNOWN_INSTR;
-        }
-
-        if ((r != 'R') || (sep1 != ' ') || (sep2 != ' ') || (open_bracket != '[') || (close_bracket != ']') || (comma != ',')){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_DIR;
-        IR->instr.a.type = OPERAND_REG;
-        IR->instr.a.reg = a;
-        IR->instr.b.type = OPERAND_VALUE;
-        IR->instr.b.value = (int64_t) addr;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-
-ParserError tryParseREG(char *buffer, struct IR_Node *IR){
-
-    char *op_name;
-    char sep1 = 0;
-    char sep2 = 0;
-    char r1 = 0;
-    char r2 = 0;
-    char comma = 0;
-    int count = 0;
-    int n = 0;
-    uint8_t a = 0;
-    uint8_t b = 0;
-
-    if ((count = sscanf(buffer, "%m[A-Z]%c%c%hhu%c%c%c%hhu%n", &op_name, &sep1, &r1, &a, &comma, &sep2, &r2, &b, &n)) == 8){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-        if (r2 == '['){
-            free(op_name);
-            return PARSER_UNKNOWN_INSTR;
-        }
-
-        if ((r1 != 'R') || (r2 != 'R') || (sep1 != ' ') || (sep2 != ' ') || (comma != ',')){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_REG;
-        IR->instr.a.type = OPERAND_REG;
-        IR->instr.a.reg = a;
-        IR->instr.b.type = OPERAND_REG;
-        IR->instr.b.reg = b;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-ParserError tryParseIMM(char *buffer, struct IR_Node *IR){
-
-    char *op_name;
-    char sep1 = 0;
-    char sep2 = 0;
-    char r1 = 0;
-    char comma = 0;
-    int count = 0;
-    int n = 0;
-    uint8_t a = 0;
-    int64_t imm = 0;
-
-    if ((count = sscanf(buffer, "%m[A-Z]%c%c%hhu%c%c%ld%n", &op_name, &sep1, &r1, &a, &comma, &sep2, &imm, &n)) == 7){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-
-        if ((r1 != 'R') || (sep1 != ' ') || (sep2 != ' ') || (comma != ',')){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_IMM;
-        IR->instr.a.type = OPERAND_REG;
-        IR->instr.a.reg = a;
-        IR->instr.b.type = OPERAND_VALUE;
-        IR->instr.b.value = imm;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-ParserError tryParseREGU(char *buffer, struct IR_Node *IR){
- 
-    char *op_name;
-    char sep = 0;
-    char r = 0;
-    int count = 0;
-    int n = 0;
-    uint8_t a = 0;
-
-    if ((count = sscanf(buffer, "%m[A-Z]%c%c%hhu%n", &op_name, &sep, &r, &a, &n)) == 4){
-        if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-
-        if ((r != 'R') || (sep != ' ')){
-            free(op_name);
-            return PARSER_SYNTAX_ERROR;
-        }
-        
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_REGU;
-        IR->instr.a.type = OPERAND_REG;
-        IR->instr.b.type = OPERAND_NONE;
-        IR->instr.a.reg = a;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR; 
-}
-
-ParserError tryParseNONE(char *buffer, struct IR_Node *IR){
-    char *op_name = NULL;
-    int n = 0;
-    int count = 0;
-    if ((count = sscanf(buffer, "%m[A-Z]%n", &op_name, &n)) == 1){
-         if (!isEndOfInstr(buffer[n])){
-            free(op_name);
-            return PARSER_TOO_MANY_OPE;
-        }
-
-        IR->type = IR_INSTR;
-        IR->instr.op = op_lookup(op_name);
-        IR->instr.mode = MODE_NONE;
-        IR->instr.a.type = OPERAND_NONE;
-        IR->instr.b.type = OPERAND_NONE;
-        free(op_name);
-        return PARSER_OK;
-    }
-    if (op_name){
-        free(op_name);
-    }
-    return PARSER_UNKNOWN_INSTR; 
-}
-
-
-ParserError tryParseOp(char *buffer, struct IR_Node *IR){
-
-    ParserError status;
-    status = tryParseIMM(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseDIR(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseREG(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseIDX(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseIND(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseREGU(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseNONE(buffer, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    return PARSER_UNKNOWN_INSTR;
-}
-
-
-ParserError parse_line(char *buffer, struct IR_Node *IR){
-    IR->type = IR_UNDEF;
-    ParserError status;
-    size_t i = 0;
-    size_t n = strlen(buffer);
-    while ((i < n) && (buffer[i] != '.') && !isalnum(buffer[i])) i++;
-    if ((buffer[i] == '\n') || (buffer[i] == '\0')){
-        return PARSER_EMPTY;
-    }
-    status = tryParseDir(buffer + i, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseLabel(buffer + i, IR);
-    if (status != PARSER_UNKNOWN_INSTR){
-        return status;
-    }
-    status = tryParseOp(buffer + i, IR);
-    return status;
-}
-
-void printStatus(ParserError status, size_t line){
+void printParserStatus(char *prog, ParserError status, struct Token *tok){
     switch (status){
-        case PARSER_OK: printf("OK\n"); break;
-        case PARSER_TOO_MANY_OPE: printf("Error : too many arguments on line %lu\n", line); break;
-        case PARSER_SYNTAX_ERROR: printf("Syntax error on line %lu\n", line); break;
-        case PARSER_TOO_FEW_OPE: printf("Error : too few arguments on line %lu\n", line); break;
-        case PARSER_UNKNOWN_INSTR: printf("Error : unknown instruction on line %lu\n", line);
+        case PARSER_OK: printf("%s OK\n", prog); break;
+        case PARSER_TOO_MANY_OPE: printf("%s:%lu.%lu : too many arguments\n", prog, tok->line, tok->column); break;
+        case PARSER_SYNTAX_ERROR: printf("%s:%lu.%lu : syntax error\n", prog, tok->line, tok->column); break;
+        case PARSER_TOO_FEW_OPE: printf("%s:%lu.%lu : too few arguments\n", prog, tok->line, tok->column); break;
+        case PARSER_UNKNOWN_INSTR: printf("%s:%lu.%lu : unknown instruction\n", prog, tok->line, tok->column); break;
+        case PARSER_UNKNOWN_DIR: printf("%s:%lu.%lu : unknown directive\n", prog, tok->line, tok->column); break;
+        case PARSER_UNKNOWN_OP: printf("%s:%lu.%lu : unknown operation\n", prog, tok->line, tok->column); break;
         default: break;
     }
 }
 
-struct IR_Node *parser(char *filename, size_t *n){
+void printLexerStatus(char *prog, LexerError status, struct Token *tok){
+    switch (status){
+        case LEXER_OK: printf("%s OK\n", prog); break;
+        case LEXER_ERROR_MISSING_QUOTE: printf("%s:%lu.%lu : missing quote\n", prog, tok->line, tok->column); break;
+        case LEXER_INVALID_TOKEN: printf("%s:%lu.%lu : invalid token\n", prog, tok->line, tok->column); break;
+        default: break;
+    }
+}
 
-    FILE *file = fopen(filename, "r");
+int isSyntaxElement(struct Token *tok){
+    switch (tok->type){
+        case TOKEN_COMMA:
+        case TOKEN_DOT:
+        case TOKEN_OPEN_BRACKET:
+        case TOKEN_CLOSE_BRACKET:
+        case TOKEN_COLON:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+int isEndOfInstr(struct Token *tok){
+    return (tok->type == TOKEN_EOF) || (tok->type == TOKEN_NEWLINE);
+}
+
+ParserError parse_dir(char *prog, struct Lexer *lexer, struct IR_Node *IR, struct Token *tok){
+    LexerError status;
+
+    *tok = lexer_next_token(lexer, &status);
+    CHK_LEXER_STATUS(prog, status, tok);
+    if (tok->type != TOKEN_IDENT){
+        return PARSER_SYNTAX_ERROR;
+    }
+    IR->directive.type = dir_lookup(tok->text, tok->length);
+    if (IR->directive.type == DIR_COUNT){
+        return PARSER_UNKNOWN_DIR;
+    }
+
+    *tok = lexer_next_token(lexer, &status);
+    CHK_LEXER_STATUS(prog, status, prog);
+    if (tok->type == TOKEN_NUMBER){
+        IR->directive.value.value = tok->number;
+    }
+    else if ((tok->type == TOKEN_IDENT) || (tok->type == TOKEN_STRING)){
+        IR->directive.string.str = tok->text;
+    }
+    else if (isEndOfInstr(tok)){
+        return PARSER_TOO_FEW_OPE;
+    }
+    else {
+        return PARSER_SYNTAX_ERROR;
+    }
+
+    *tok = lexer_next_token(lexer, &status);
+    CHK_LEXER_STATUS(prog, status, tok);
+    if (!isEndOfInstr(tok) && isSyntaxElement(tok)){
+        return PARSER_SYNTAX_ERROR;
+    }
+    else if (!isEndOfInstr){
+        return PARSER_TOO_MANY_OPE;
+    }
+    else {
+        return PARSER_OK;
+    }
+}
+
+ParserError parse_label(char *prog, struct Lexer *lexer, struct IR_Node *IR, struct Token *tok){
+    LexerError status;
+    *tok = lexer_next_token(lexer, status);
+    CHK_LEXER_STATUS(prog, status, tok);
+    
+    if (tok->type == TOKEN_COLON){
+        return PARSER_OK;
+    }
+    else if (isEndOfInstr(tok)){
+        return PARSER_SYNTAX_ERROR;
+    }
+    else {    
+        return PARSER_TOO_MANY_OPE;
+    }
+}
+
+ParserError parse_instr(char prog, struct Lexer *lexer, struct IR_Node *IR, struct Token *tok);
+
+ParserError parse_line(char *prog, char *buffer, struct IR_Node *IR, struct Lexer *lexer){
+
+    struct Token *tok;
+    LexerError lstatus;
+    ParserError pstatus;
+    lexer->cursor = buffer;
+    *tok = lexer_next_token(lexer, lstatus);
+    CHK_LEXER_STATUS(prog, lstatus, tok);
+    if (isSyntaxElement(tok)){
+        return PARSER_SYNTAX_ERROR;
+    }
+    else if (isEndOfInstr(tok)){
+        return PARSER_OK;
+    }
+    switch (tok->type){
+        case TOKEN_DOT:IR->type = IR_DIR; pstatus = parse_dir(prog, lexer, IR, tok); break;
+        case TOKEN_IDENT:IR->type = IR_LABEL; pstatus = parse_label(prog, lexer, IR, tok); break;
+        case TOKEN_MNEMONIC:IR->type = IR_INSTR; pstatus = parse_instr(prog, lexer, IR, tok); break;
+        default: return PARSER_UNKNOWN_INSTR;
+    }
+
+    CHK_PARSER_STATUS(prog, pstatus, tok);
+    return PARSER_OK;
+}
+
+
+struct IR_Node *parser(char *prog, size_t *n){
+
+    FILE *file = fopen(prog, "r");
 
     if (!file){
         perror("fopen");
@@ -578,7 +254,6 @@ struct IR_Node *parser(char *filename, size_t *n){
     ParserError status;
 
     while (fgets(str, INSTR_LEN, file)){
-        printf("line : %lu |%s|\n", line+1, str);
         if (i == prog_size){
             tmp = realloc(IRList, 2 * prog_size);
             prog_size *= 2;
@@ -588,18 +263,12 @@ struct IR_Node *parser(char *filename, size_t *n){
                 exit(EXIT_FAILURE);
             }
         }
-        status = parse_line(str, &IRList[i]);
-        if (status == PARSER_EMPTY){
-            line++;
-            continue;
-        }
-        if (status != PARSER_OK){
-            printStatus(status, line+1);
-            exit(EXIT_FAILURE);
-        }
         i++;
-        line++;
     }
     *n = i;
+    if (fclose(file) != 0){
+        perror("fclose");
+        exit(EXIT_FAILURE);
+    }
     return IRList;
 }

@@ -197,6 +197,7 @@ int main(){
         }
         lexer.column = 0;
         lexer.line++;
+        printf("NEWLINE implicite\n");
         memset(buffer, 0, 256);
     }
     return 0;

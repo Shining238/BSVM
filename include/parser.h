@@ -8,23 +8,25 @@
 typedef enum {
     IR_INSTR,
     IR_LABEL,
-    IR_DIR,
-    IR_UNDEF
+    IR_DIR
 } IRType;
 
 typedef enum {
     DIR_STRING,
-    DIR_VALUE,
-    DIR_UNDEF
+    DIR_ADDR,
+    DIR_ORG,
+    DIR_WORD,
+    DIR_COUNT
 } DirType;
 
 typedef enum {
+    PARSER_UNKNOWN_DIR,
+    PARSER_UNKNOWN_OP,
     PARSER_UNKNOWN_INSTR,
     PARSER_SYNTAX_ERROR,
     PARSER_TOO_MANY_OPE,
     PARSER_TOO_FEW_OPE,
-    PARSER_OK,
-    PARSER_EMPTY
+    PARSER_OK
 } ParserError;
 
 typedef enum {
@@ -73,7 +75,6 @@ struct IR_Node {
 
         struct {
             DirType type;
-            char *op;
             union {
                 Operand value;
                 Operand string;
@@ -86,6 +87,11 @@ typedef struct OpMap {
     const char *mnemonic;
     OP_CODE op;
 } OpMap;
+
+typedef struct DirMap {
+    const char *mnemonic;
+    DirType dir;
+} DirMap;
 
 struct IR_Node *parser(char *filename, size_t *n);
 
