@@ -29,7 +29,7 @@ struct Token{
         int64_t number;
         uint64_t reg;
         struct {
-            const char *text;
+            char *text;
             size_t length;
         };
     };
@@ -40,11 +40,12 @@ struct Token{
 typedef enum {
     LEXER_ERROR_MISSING_QUOTE,
     LEXER_INVALID_TOKEN,
+    LEXER_UNKNOWN_ESCAPE_SEQUENCE,
     LEXER_OK
 } LexerError;
 
 struct Lexer {
-    const char *cursor;
+    char *cursor;
 
     size_t line;
     size_t column;

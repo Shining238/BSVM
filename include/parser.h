@@ -14,7 +14,7 @@ typedef enum {
 typedef enum {
     DIR_STRING,
     DIR_ADDR,
-    DIR_ORG,
+    DIR_ENTRY,
     DIR_WORD,
     DIR_COUNT
 } DirType;

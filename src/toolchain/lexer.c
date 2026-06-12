@@ -6,6 +6,17 @@
 #include <stdint.h>
 #include <ctype.h>
 
+char escape_sequence(char c){
+    switch (c){
+        case 'n':   return '\n';
+        case 't': return '\t';
+        case 'r': return '\r';
+        case '\"': return '\t';
+        case '\\': return '\\';
+        case '0': return '\0';
+        default: return EOF;
+    }
+}
 
 struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
 
@@ -14,7 +25,10 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
         lexer->column++;
     }
     size_t len = 0;
-    const char *start = lexer->cursor;
+    char *start = lexer->cursor;
+    size_t str_size = 32;
+    char *str = NULL;
+    char *tmp;
     size_t column = 0;
     uint64_t reg = 0;
     int64_t value = 0;
@@ -65,7 +79,7 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
             if ((__int128_t)(reg * 10) > INT64_MAX){
                 *status = LEXER_INVALID_TOKEN;
                 lexer->column += len+2;
-                return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column};
+                return (struct Token) {.type=TOKEN_REGISTER, .line=lexer->line, .column=lexer->column};
             }
             reg = reg * 10 + (*lexer->cursor - '0');
             lexer->cursor++;
@@ -87,7 +101,7 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
             if ((__int128_t)(value * 10) > INT64_MAX){
                 *status = LEXER_INVALID_TOKEN;
                 lexer->column += len+2;
-                return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column};
+                return (struct Token) {.type=TOKEN_NUMBER, .line=lexer->line, .column=lexer->column};
             }
             value = value * 10 + (*lexer->cursor - '0');
             len++;
@@ -101,22 +115,48 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
 
     //string
     if (*lexer->cursor == '\"'){
+        len = 0;
+        str = malloc(str_size);
         start++;
         lexer->cursor++;
         while (*lexer->cursor && (*lexer->cursor != '\"')){
-            *lexer->cursor++;
+            if (len == str_size){
+                tmp = realloc(str, 2 * str_size);
+                if (!tmp){
+                    perror("realloc");
+                    free(str);
+                    exit(EXIT_FAILURE);
+                }
+                str = tmp;
+                str_size *= 2;
+            }
+            if (*lexer->cursor == '\\'){
+                lexer->cursor++;
+                lexer->column++;
+                str[len] = escape_sequence(*lexer->cursor);
+                if (str[len] == EOF){
+                    *status = LEXER_UNKNOWN_ESCAPE_SEQUENCE;
+                    free(str);
+                    return (struct Token) {.type=TOKEN_STRING, .line=lexer->line, .column=column};
+                }
+            }
+            else {
+                str[len] = *lexer->cursor;
+            }
+            lexer->cursor++;
             len++;
         }
         if (*lexer->cursor != '\"'){
             *status = LEXER_ERROR_MISSING_QUOTE;
-            lexer->column += len+1;
-            return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column};
+            lexer->column += len;
+            free(str);
+            return (struct Token) {.type=TOKEN_STRING, .line=lexer->line, .column=lexer->column};
         }
         lexer->cursor++;
         column = lexer->column;
         lexer->column += len + 2;
         *status = LEXER_OK;
-        return (struct Token) {.type=TOKEN_STRING, .text=start, .length=len, .line=lexer->line, .column=column};
+        return (struct Token) {.type=TOKEN_STRING, .text=str, .length=len, .line=lexer->line, .column=column};
     }
 
     //identifier

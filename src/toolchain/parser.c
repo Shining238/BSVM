@@ -60,11 +60,11 @@ static const OpMap op_map[OP_COUNT] = {
 static const DirMap dir_map[DIR_COUNT] = {
     {.mnemonic="string", .dir=DIR_STRING},
     {.mnemonic="addr", .dir=DIR_ADDR},
-    {.mnemonic="org", .dir=DIR_ORG},
+    {.mnemonic="entry", .dir=DIR_ENTRY},
     {.mnemonic="word", .dir=DIR_WORD}
 };
 
-char *getDirStr(DirType dir){
+const char *getDirStr(DirType dir){
     for (size_t i = 0; i < DIR_COUNT; i++){
         if (dir == dir_map[i].dir){
             return dir_map[i].mnemonic;
@@ -73,7 +73,7 @@ char *getDirStr(DirType dir){
     return NULL;
 }
 
-char *getOpStr(OP_CODE op){
+const char *getOpStr(OP_CODE op){
     for (size_t i = 0; i < OP_COUNT; i++){
         if (op == op_map[i].op){
             return op_map[i].mnemonic;
@@ -156,7 +156,15 @@ void printIRNode(struct IR_Node *IR){
     }
     if (IR->type == IR_INSTR){
         printf("OP : %s ", getOpStr(IR->instr.op));
+        if (IR->instr.a.type == OPERAND_NONE){
+            printf("\n");
+            return;
+        }
         printinstrOPE(&IR->instr.a);
+        if (IR->instr.b.type == OPERAND_NONE){
+            printf("\n");
+            return;
+        }
         printf(", ");
         printinstrOPE(&IR->instr.b);
         printf("\n");
@@ -207,6 +215,7 @@ void printLexerStatus(char *prog, LexerError status, struct Token *tok){
         case LEXER_OK: printf("%s OK\n", prog); break;
         case LEXER_ERROR_MISSING_QUOTE: printf("%s:%lu.%lu : missing quote\n", prog, tok->line+1, tok->column+1); break;
         case LEXER_INVALID_TOKEN: printf("%s:%lu.%lu : invalid token\n", prog, tok->line+1, tok->column+1); break;
+        case LEXER_UNKNOWN_ESCAPE_SEQUENCE: printf("%s:%lu.%lu : unknown escape sequence\n", prog, tok->line+1, tok->column+1); break;
         default: break;
     }
 }
@@ -260,7 +269,10 @@ ParserError parse_dir(char *prog, struct Lexer *lexer, struct IR_Node *IR, struc
     }
     else if ((tok->type == TOKEN_IDENT) || (tok->type == TOKEN_STRING)){
         IR->directive.string.ident.str = malloc(tok->length);
-        memcpy(IR->directive.string.ident.str, tok->text, tok->length);
+        memcpy(IR->directive.string.ident.str, tok->text, tok->length); ///------A changer : malloc du string dans lexer
+        if (tok->type == TOKEN_STRING){
+            free(tok->text);
+        }
         IR->directive.string.type = OPERAND_STRING;
         IR->directive.string.ident.length = tok->length;
     }
@@ -479,7 +491,10 @@ ParserError parse_instr(char *prog, struct Lexer *lexer, struct IR_Node *IR, str
     *tok = lexer_next_token(lexer, &status);
     CHK_LEXER_STATUS(prog, status, tok);
     if (!isEndOfInstr(tok) && (tok->type != TOKEN_COMMA)){
-        return PARSER_SYNTAX_ERROR;
+        if (isSyntaxElement(tok)){
+            return PARSER_SYNTAX_ERROR;
+        }
+        return PARSER_TOO_MANY_OPE;
     }
     else if (isEndOfInstr(tok)){
         IR->instr.b.type = OPERAND_NONE;
@@ -580,28 +595,18 @@ struct IR_Node *parser(char *prog, size_t *n){
 }
 
 #ifdef TEST
-int main(){
+int main(int argc, char *argv[]){
 
-    struct IR_Node IR;
-    char str[INSTR_LEN + 1] = {0};
-    ParserError status;
-    struct Lexer lexer = {.cursor=str, .line=0, .column=0};
-    struct Token tok = {0};
-    while (fgets(str, INSTR_LEN, stdin)){
-        lexer.cursor = str;
-        status = parse_line("test", str, &IR, &lexer, &tok);
-        if (status != PARSER_OK){
-            printParserStatus("test", status, &tok);
-        }
-        if (status != PARSER_EMPTY){
-            printIRNode(&IR);
-            free_IRNode(&IR);
-            memset(&IR, 0, sizeof(struct IR_Node));
-        }
-        lexer.line++;
-        lexer.column = 0;
+    size_t prog_size = 0;
+    struct IR_Node *IRList = parser(argv[1], &prog_size);
+    printf("prog size : %lu\n", prog_size);
+    for (int i = 0; i < prog_size; i++){
+        printIRNode(&IRList[i]);
+        free_IRNode(&IRList[i]);
     }
+    printf("PARSER OK\n");
 
+    free(IRList);
     return 0;
 }
 #endif
