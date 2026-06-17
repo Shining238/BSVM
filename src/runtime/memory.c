@@ -8,10 +8,11 @@
 
 //lit 64 bits dans vm->memory à partir de addr et le place dans *out
 VM_Error memRead64(struct VM *vm, uint64_t addr, int64_t *out){
-    if (addr >= MEM_SIZE){
+    if (addr + 7 >= MEM_SIZE){
         return VM_ILL_MEM_ACCESS;
     }
-    
+   
+    *out = 0;
     for (size_t i = 0; i < 8; i++){
         *out |= (int64_t)vm->memory[addr++] << (8 * i);
     }
@@ -20,7 +21,7 @@ VM_Error memRead64(struct VM *vm, uint64_t addr, int64_t *out){
 
 //écrit 64 bits dans vm->memory a partir de addr
 VM_Error memWrite64(struct VM *vm, uint64_t addr, int64_t value){
-    if (addr >= MEM_SIZE){
+    if (addr + 7 >= MEM_SIZE){
         return VM_ILL_MEM_ACCESS;
     }
 

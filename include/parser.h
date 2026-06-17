@@ -16,6 +16,9 @@ typedef enum {
     DIR_ADDR,
     DIR_ENTRY,
     DIR_WORD,
+    DIR_BYTE,
+    DIR_TEXT,
+    DIR_DATA,
     DIR_COUNT
 } DirType;
 
@@ -70,6 +73,7 @@ typedef struct {
 
 struct IR_Node {
     IRType type;
+    size_t line;
 
     union {
         struct {

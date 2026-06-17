@@ -1287,14 +1287,14 @@ VM_Error instrCALL(struct VM *vm, const struct Instruction *instr){
         return VM_INVALID_JMP;
     }
 
-    vm->sp--;
+    vm->sp -= sizeof(vm->pc);
      
-    VM_Error status = memWrite64(vm, vm->sp, vm->pc);
+    VM_Error status = memWrite64(vm, vm->sp, vm->pc + mode_size[instr->mode]);
     if (status == VM_OK){
         vm->pc = (uint64_t) instr->args.imm;
         return VM_OK;
     }
-    vm->sp++;
+    vm->sp += sizeof(vm->pc);
     return status;
 }
 
@@ -1310,14 +1310,14 @@ VM_Error instrCALLR(struct VM *vm, const struct Instruction *instr){
         return VM_INVALID_JMP;
     }
 
-    vm->sp--;
+    vm->sp -= sizeof(vm->pc);
      
-    VM_Error status = memWrite64(vm, vm->sp, vm->pc);
+    VM_Error status = memWrite64(vm, vm->sp, vm->pc + mode_size[instr->mode]);
     if (status == VM_OK){
         vm->pc = (uint64_t) vm->registers[instr->a];
         return VM_OK;
     }
-    vm->sp++;
+    vm->sp += sizeof(vm->pc);
     return status;
 }
 
@@ -1337,14 +1337,14 @@ VM_Error instrCALLD(struct VM *vm, const struct Instruction *instr){
     if (addr >= DATA_BASE){
         return VM_INVALID_JMP;
     }
-    vm->sp--;
+    vm->sp -= sizeof(vm->pc);
      
-    status = memWrite64(vm, vm->sp, vm->pc);
+    status = memWrite64(vm, vm->sp, vm->pc + mode_size[instr->mode]);
     if (status == VM_OK){
         vm->pc = (uint64_t)addr;
         return VM_OK;
     }
-    vm->sp++;
+    vm->sp += sizeof(vm->pc);
     return status;
 }
 
@@ -1367,14 +1367,14 @@ VM_Error instrCALLI(struct VM *vm, const struct Instruction *instr){
         return VM_INVALID_JMP;
     }
 
-    vm->sp--;
+    vm->sp -= sizeof(vm->pc);
      
-    status = memWrite64(vm, vm->sp, vm->pc);
+    status = memWrite64(vm, vm->sp, vm->pc + mode_size[instr->mode]);
     if (status == VM_OK){
         vm->pc = (uint64_t) addr;
         return VM_OK;
     }
-    vm->sp++;
+    vm->sp += sizeof(vm->pc);
     return status;
 }
 
@@ -1397,14 +1397,14 @@ VM_Error instrCALLX(struct VM *vm, const struct Instruction *instr){
         return VM_INVALID_JMP;
     }
 
-    vm->sp--;
+    vm->sp -= sizeof(vm->pc);
      
-    status = memWrite64(vm, vm->sp, vm->pc);
+    status = memWrite64(vm, vm->sp, vm->pc + mode_size[instr->mode]);
     if (status == VM_OK){
         vm->pc = (uint64_t) addr;
         return VM_OK;
     }
-    vm->sp++;
+    vm->sp += sizeof(vm->pc);
     return status;
 }
 
@@ -1423,7 +1423,7 @@ VM_Error instrRTN(struct VM *vm, const struct Instruction *instr){
 
     if (status == VM_OK){
         vm->pc = (uint64_t)value;
-        vm->sp++;
+        vm->sp += sizeof(value);
     }
     return status;
 }
@@ -1842,7 +1842,7 @@ static InstrHandler dispatchCMP[MODE_COUNT] = {
 };
 
 static InstrHandler dispatchNEG[MODE_COUNT] = {
-    [MODE_REG] = instrNEG
+    [MODE_REGU] = instrNEG
 };
 
 static InstrHandler dispatchAND[MODE_COUNT] = {
@@ -1886,7 +1886,7 @@ static InstrHandler dispatchSHR[MODE_COUNT] = {
 };
 
 static InstrHandler dispatchNOT[MODE_COUNT] = {
-    [MODE_REG] = instrNOT
+    [MODE_REGU] = instrNOT
 };
 
 static InstrHandler dispatchST[MODE_COUNT] = {
@@ -1911,11 +1911,11 @@ static InstrHandler dispatchSWP[MODE_COUNT] = {
 };
 
 static InstrHandler dispatchPUSH[MODE_COUNT] = {
-    [MODE_REG] = instrPUSH
+    [MODE_REGU] = instrPUSH
 };
 
 static InstrHandler dispatchPOP[MODE_COUNT] = {
-    [MODE_REG] = instrPOP
+    [MODE_REGU] = instrPOP
 };
 
 static InstrHandler dispatchFAS[MODE_COUNT] = {
@@ -1926,7 +1926,7 @@ static InstrHandler dispatchFAS[MODE_COUNT] = {
 
 static InstrHandler dispatchCALL[MODE_COUNT] = {
     [MODE_IMM] = instrCALL,
-    [MODE_REG] = instrCALLR,
+    [MODE_REGU] = instrCALLR,
     [MODE_DIR] = instrCALLD,
     [MODE_IND] = instrCALLI,
     [MODE_IDX] = instrCALLX
@@ -1942,7 +1942,7 @@ static InstrHandler dispatchNOP[MODE_COUNT] = {
 
 static InstrHandler dispatchJMP[MODE_COUNT] = {
     [MODE_IMM] = instrJMP,
-    [MODE_REG] = instrJMPR,
+    [MODE_REGU] = instrJMPR,
     [MODE_DIR] = instrJMPD,
     [MODE_IND] = instrJMPI,
     [MODE_IDX] = instrJMPX
@@ -1950,7 +1950,7 @@ static InstrHandler dispatchJMP[MODE_COUNT] = {
 
 static InstrHandler dispatchJEQ[MODE_COUNT] = {
     [MODE_IMM] = instrJEQ,
-    [MODE_REG] = instrJEQR,
+    [MODE_REGU] = instrJEQR,
     [MODE_DIR] = instrJEQD,
     [MODE_IND] = instrJEQI,
     [MODE_IDX] = instrJEQX
@@ -1958,7 +1958,7 @@ static InstrHandler dispatchJEQ[MODE_COUNT] = {
 
 static InstrHandler dispatchJNE[MODE_COUNT] = {
     [MODE_IMM] = instrJNE,
-    [MODE_REG] = instrJNER,
+    [MODE_REGU] = instrJNER,
     [MODE_DIR] = instrJNED,
     [MODE_IND] = instrJNEI,
     [MODE_IDX] = instrJNEX
@@ -1966,7 +1966,7 @@ static InstrHandler dispatchJNE[MODE_COUNT] = {
 
 static InstrHandler dispatchJLE[MODE_COUNT] = {
     [MODE_IMM] = instrJLE,
-    [MODE_REG] = instrJLER,
+    [MODE_REGU] = instrJLER,
     [MODE_DIR] = instrJLED,
     [MODE_IND] = instrJLEI,
     [MODE_IDX] = instrJLEX
@@ -1974,7 +1974,7 @@ static InstrHandler dispatchJLE[MODE_COUNT] = {
 
 static InstrHandler dispatchJLT[MODE_COUNT] = {
     [MODE_IMM] = instrJLT,
-    [MODE_REG] = instrJLTR,
+    [MODE_REGU] = instrJLTR,
     [MODE_DIR] = instrJLTD,
     [MODE_IND] = instrJLTI,
     [MODE_IDX] = instrJLTX
@@ -1982,7 +1982,7 @@ static InstrHandler dispatchJLT[MODE_COUNT] = {
 
 static InstrHandler dispatchJGE[MODE_COUNT] = {
     [MODE_IMM] = instrJGE,
-    [MODE_REG] = instrJGER,
+    [MODE_REGU] = instrJGER,
     [MODE_DIR] = instrJGED,
     [MODE_IND] = instrJGEI,
     [MODE_IDX] = instrJGEX
@@ -1990,7 +1990,7 @@ static InstrHandler dispatchJGE[MODE_COUNT] = {
 
 static InstrHandler dispatchJGT[MODE_COUNT] = {
     [MODE_IMM] = instrJGT,
-    [MODE_REG] = instrJGTR,
+    [MODE_REGU] = instrJGTR,
     [MODE_DIR] = instrJGTD,
     [MODE_IND] = instrJGTI,
     [MODE_IDX] = instrJGTX
@@ -2037,7 +2037,38 @@ static InstrHandler *dispatch[OP_COUNT] = {
    [OP_HALT] = dispatchHALT
 };
 
-
+static int dispatchArgsCount[OP_COUNT] = {
+   [OP_ADD] = 2,
+   [OP_SUB] = 2,
+   [OP_MUL] = 2,
+   [OP_DIV] = 2,
+   [OP_CMP] = 2,
+   [OP_NEG] = 1,
+   [OP_AND] = 2,
+   [OP_OR] = 2,
+   [OP_XOR] = 2,
+   [OP_NOT] = 1,
+   [OP_SHL] = 2,
+   [OP_SHR] = 2,
+   [OP_ST] = 2,
+   [OP_LD] = 2,
+   [OP_SWP] = 2,
+   [OP_PUSH] = 1,
+   [OP_POP] = 1,
+   [OP_FAS] = 2,
+   [OP_CALL] = 1,
+   [OP_RTN] = 0,
+   [OP_NOP] = 0,
+   [OP_RST] = 0,
+   [OP_JMP] = 1,
+   [OP_JEQ] = 1,
+   [OP_JNE] = 1,
+   [OP_JLE] = 1,
+   [OP_JLT] = 1,
+   [OP_JGE] = 1,
+   [OP_JGT] = 1,
+   [OP_HALT] = 0
+};
 
 InstrHandler get_handler(OP_CODE op_code, MODE mode){
     if (op_code >= OP_COUNT){
@@ -2047,4 +2078,10 @@ InstrHandler get_handler(OP_CODE op_code, MODE mode){
         return NULL;
     }
     return dispatch[op_code][mode];
+}
+
+
+int getArgsCount(OP_CODE op_code){
+    if (op_code >= OP_COUNT) return 0;
+    return dispatchArgsCount[op_code];
 }

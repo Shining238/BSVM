@@ -78,3 +78,5 @@ struct Instruction {
 typedef VM_Error (*InstrHandler)(struct VM *, const struct Instruction *);
 
 InstrHandler get_handler(OP_CODE op_code, MODE mode);
+
+int getArgsCount(OP_CODE op_code);

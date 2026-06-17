@@ -72,11 +72,17 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
             *status = LEXER_OK;
             return (struct Token) {.type=TOKEN_EOF, .line=lexer->line, .column=lexer->column++};
     }
+    //comment
+    if ((*lexer->cursor == '/') && (*(lexer->cursor+1) == '/')){
+        lexer->cursor += 2;
+        *status = LEXER_OK;
+        return (struct Token) {.type=TOKEN_NEWLINE, .line=lexer->line, .column=lexer->column};
+    }
     //register
     if (*lexer->cursor == 'R'){
         lexer->cursor++;
         while (*lexer->cursor && isdigit(*lexer->cursor)){
-            if ((__int128_t)(reg * 10) > INT64_MAX){
+            if (((__int128_t)reg * 10) > INT64_MAX){
                 *status = LEXER_INVALID_TOKEN;
                 lexer->column += len+2;
                 return (struct Token) {.type=TOKEN_REGISTER, .line=lexer->line, .column=lexer->column};
@@ -98,7 +104,7 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
         value = (*lexer->cursor - '0'); 
         lexer->cursor++;
         while (*lexer->cursor && isdigit(*lexer->cursor)){
-            if ((__int128_t)(value * 10) > INT64_MAX){
+            if (((__int128_t) value * 10) > INT64_MAX){
                 *status = LEXER_INVALID_TOKEN;
                 lexer->column += len+2;
                 return (struct Token) {.type=TOKEN_NUMBER, .line=lexer->line, .column=lexer->column};

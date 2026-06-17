@@ -61,7 +61,10 @@ static const DirMap dir_map[DIR_COUNT] = {
     {.mnemonic="string", .dir=DIR_STRING},
     {.mnemonic="addr", .dir=DIR_ADDR},
     {.mnemonic="entry", .dir=DIR_ENTRY},
-    {.mnemonic="word", .dir=DIR_WORD}
+    {.mnemonic="word", .dir=DIR_WORD},
+    {.mnemonic="byte", .dir=DIR_BYTE},
+    {.mnemonic="text", .dir=DIR_TEXT},
+    {.mnemonic="data", .dir=DIR_DATA}
 };
 
 const char *getDirStr(DirType dir){
@@ -116,14 +119,14 @@ void free_IRNode(struct IR_Node *IR){
 void printinstrOPE(Operand *ope){
     switch (ope->type){
         case OPERAND_NONE: break;
-        case OPERAND_IDENT: fwrite(ope->ident.str, 1, ope->ident.length, stdout); printf(" "); break;
+        case OPERAND_IDENT: printf("%s ", ope->ident.str); break;
         case OPERAND_REG: printf("R%hhu", ope->reg); break;
         case OPERAND_VALUE: printf("%ld", ope->value); break;
-        case OPERAND_MEM_IDENT: printf("["); fwrite(ope->ident.str, 1, ope->ident.length, stdout); printf("]"); break;
+        case OPERAND_MEM_IDENT: printf("[%s]", ope->mem.ident.str); break;
         case OPERAND_MEM_REG: printf("[R%hhu]", ope->reg); break;
         case OPERAND_MEM_VALUE: printf("[%ld]", ope->value); break;
         case OPERAND_MEM_IDX: printf("[R%hhu+%ld]", ope->mem.base_reg, ope->mem.offset); break;
-        case OPERAND_MEM_IDX_IDENT: printf("["); fwrite(ope->mem.ident.str, 1, ope->mem.ident.length, stdout); printf("+%ld]", ope->mem.offset); break;
+        case OPERAND_MEM_IDX_IDENT: printf("[%s+%ld]", ope->mem.ident.str, ope->mem.offset); break;
         default: printf("*");
     }
 }
@@ -131,15 +134,18 @@ void printinstrOPE(Operand *ope){
 void printIRNode(struct IR_Node *IR){
     if (IR->type == IR_DIR){
         printf("DIR : .%s ", getDirStr(IR->directive.type));
-        if (IR->directive.string.type == OPERAND_STRING){
-            fwrite(IR->directive.string.ident.str, 1, IR->directive.string.ident.length, stdout);
+        if ((IR->directive.string.type == OPERAND_STRING) || (IR->directive.string.type == OPERAND_IDENT)){
+            printf("%s", IR->directive.string.ident.str);
             printf("\n");
         }
         else if (IR->directive.value.type == OPERAND_VALUE){
             printf("%ld\n", IR->directive.value.value);
         }
-        else {
+        else if (IR->directive.string.type != OPERAND_NONE){
             printf("wrong operand type\n");
+        }
+        else {
+            printf("no argument\n");
         }
         return;
     }
@@ -268,16 +274,19 @@ ParserError parse_dir(char *prog, struct Lexer *lexer, struct IR_Node *IR, struc
         }
     }
     else if ((tok->type == TOKEN_IDENT) || (tok->type == TOKEN_STRING)){
-        IR->directive.string.ident.str = malloc(tok->length);
+        IR->directive.string.ident.str = malloc(tok->length+1);
         memcpy(IR->directive.string.ident.str, tok->text, tok->length); ///------A changer : malloc du string dans lexer
+        IR->directive.string.ident.str[tok->length] = '\0';
+        IR->directive.string.type = OPERAND_IDENT;
         if (tok->type == TOKEN_STRING){
+            IR->directive.string.type = OPERAND_STRING;
             free(tok->text);
         }
-        IR->directive.string.type = OPERAND_STRING;
-        IR->directive.string.ident.length = tok->length;
+        IR->directive.string.ident.length = tok->length+1;
     }
     else if (isEndOfInstr(tok)){
-        return PARSER_TOO_FEW_OPE;
+        IR->directive.string.type = OPERAND_NONE;
+        return PARSER_OK;
     }
     else if (isSyntaxElement(tok)){
         return PARSER_SYNTAX_ERROR;
@@ -299,9 +308,10 @@ ParserError parse_dir(char *prog, struct Lexer *lexer, struct IR_Node *IR, struc
 
 ParserError parse_label(char *prog, struct Lexer *lexer, struct IR_Node *IR, struct Token *tok){
     LexerError status;
-    IR->label.name.ident.str = malloc(tok->length);
+    IR->label.name.ident.str = malloc(tok->length+1);
     memcpy(IR->label.name.ident.str, tok->text, tok->length);
-    IR->label.name.ident.length = tok->length;
+    IR->label.name.ident.str[tok->length] = '\0';
+    IR->label.name.ident.length = tok->length+1;
     IR->label.name.type = OPERAND_IDENT;
 
     *tok = lexer_next_token(lexer, &status);
@@ -335,9 +345,10 @@ ParserError parse_instrOPE(char *prog, struct Lexer *lexer, Operand *ope, struct
     int neg = 0;
     //identifier
     if (tok->type == TOKEN_IDENT){
-        ope->ident.str = malloc(tok->length);
+        ope->ident.str = malloc(tok->length+1);
         memcpy(ope->ident.str, tok->text, tok->length);
-        ope->ident.length = tok->length;
+        ope->ident.str[tok->length] = '\0';
+        ope->ident.length = tok->length+1;
         ope->type = OPERAND_IDENT;
         return PARSER_OK;
     }
@@ -401,9 +412,10 @@ ParserError parse_instrOPE(char *prog, struct Lexer *lexer, Operand *ope, struct
         else if (tok->type == TOKEN_IDENT){
             if ((suiv.type == TOKEN_MINUS) || (suiv.type == TOKEN_PLUS)){
                 ope->type = OPERAND_MEM_IDX_IDENT;
-                ope->ident.str = malloc(tok->length);
+                ope->ident.str = malloc(tok->length+1);
                 memcpy(ope->mem.ident.str, tok->text, tok->length);
-                ope->mem.ident.length = tok->length;
+                ope->mem.ident.str[tok->length] = '\0';
+                ope->mem.ident.length = tok->length+1;
                 memcpy(tok, &suiv, sizeof(struct Token));
                 neg = (tok->type == TOKEN_MINUS) ? 1 : 0;
             }
@@ -413,9 +425,10 @@ ParserError parse_instrOPE(char *prog, struct Lexer *lexer, Operand *ope, struct
             }
             else {
                 ope->type = OPERAND_MEM_IDENT;
-                ope->ident.str = malloc(tok->length);
+                ope->ident.str = malloc(tok->length+1);
                 memcpy(ope->ident.str, tok->text, tok->length);
-                ope->ident.length = tok->length;
+                ope->ident.str[tok->length] = '\0';
+                ope->ident.length = tok->length+1;
                 
                 *tok = lexer_next_token(lexer, &status);
                 CHK_LEXER_STATUS(prog, status, tok);
@@ -542,6 +555,7 @@ ParserError parse_line(char *prog, char *buffer, struct IR_Node *IR, struct Lexe
     }
 
     CHK_PARSER_STATUS(prog, pstatus, tok);
+    IR->line = tok->line+1;
     return PARSER_OK;
 }
 

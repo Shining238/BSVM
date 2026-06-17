@@ -12,6 +12,8 @@ add_link_options(-fsanitize=address,leak,undefined)
 
 add_library(core
     src/format/binary.c
+    src/runtime/instructions.c
+    src/runtime/instructions_codec.c
 )
 
 target_include_directories(core PUBLIC include)
@@ -21,7 +23,6 @@ add_executable(bsvm
     src/runtime/cpu.c
     src/runtime/instructions_codec.c
     src/runtime/instructions.c
-    src/runtime/instructions.c
     src/runtime/loader.c
     src/runtime/memory.c
     src/runtime/vm.c
@@ -30,10 +31,16 @@ add_executable(bsvm
 target_link_libraries(bsvm PRIVATE core)
 target_include_directories(bsvm PRIVATE include)
 
+
+#POV : t'as bien chié dans la colle niveau modularité
 add_executable(bsm
     src/bin/main_bsm.c
     src/toolchain/lexer.c
     src/toolchain/parser.c
+    src/toolchain/assembler.c
+    src/runtime/vm.c
+    src/runtime/cpu.c
+    src/runtime/memory.c
 )
 
 target_link_libraries(bsm PRIVATE core)
