@@ -12,7 +12,7 @@
 void readBinaryFile(char *filename, struct Binary *binary){
     int fd;
     CHK((fd = open(filename, O_RDONLY)));
-    
+
     struct BinaryHeader *headers = &binary->headers;
     uint8_t buffer[HDR_SIZE] = {0};
     size_t cursor = 0;
@@ -40,6 +40,18 @@ void readBinaryFile(char *filename, struct Binary *binary){
     for (size_t i = 0; i < sizeof(headers->data_size); i++){
         headers->data_size |= ((uint64_t) buffer[cursor++]) << (i * 8);
     }
+
+    if (headers->code_size >= (size_t) DATA_BASE){
+        fprintf(stderr, "Segment text not big enough for the code section of the program\n");
+        CHK(close(fd));
+        exit(EXIT_FAILURE);
+    }
+    if (headers->data_size >= (size_t) (DATA_BASE - STACK_BASE)){
+        fprintf(stderr, "Segment data not big enough for the data section of the program\n");
+        CHK(close(fd));
+        exit(EXIT_FAILURE);
+    }
+
     CHK(read(fd, binary->bytecode, headers->code_size));
     CHK(read(fd, binary->data, headers->data_size));
 

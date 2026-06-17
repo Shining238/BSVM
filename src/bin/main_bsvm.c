@@ -45,14 +45,13 @@ int main(int argc, char *argv[]){
     if (status != VM_OK){
         error_string = errorToString(status);
         fprintf(stderr, "%s\n", error_string);
-        printVM(&vm);
         free(error_string);
+        destroyVM(&vm);
         exit(EXIT_FAILURE);
     }
-    else {
-        printf("Successfull execution\n");
-        printVM(&vm);
-    }
+
+    printf("Exit code : %d\n", (int8_t)vm.registers[0]);
+    destroyVM(&vm);
 
     exit(EXIT_SUCCESS);
 }

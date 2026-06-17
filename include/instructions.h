@@ -2,6 +2,8 @@
 
 #include "common.h"
 #include "vm.h"
+#include "allocator.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -37,6 +39,7 @@ typedef enum {
     OP_JGE,
     OP_JGT,
     OP_HALT,
+    OP_TRAP,
     OP_COUNT
 } OP_CODE;
 
@@ -74,6 +77,8 @@ struct Instruction {
         int64_t imm;
     } args;
 };
+
+typedef VM_Error (*SysCall)(struct VM *);
 
 typedef VM_Error (*InstrHandler)(struct VM *, const struct Instruction *);
 

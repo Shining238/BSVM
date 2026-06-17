@@ -26,6 +26,7 @@ add_executable(bsvm
     src/runtime/loader.c
     src/runtime/memory.c
     src/runtime/vm.c
+    src/runtime/allocator.c
 )
 
 target_link_libraries(bsvm PRIVATE core)
@@ -41,6 +42,7 @@ add_executable(bsm
     src/runtime/vm.c
     src/runtime/cpu.c
     src/runtime/memory.c
+    src/runtime/allocator.c
 )
 
 target_link_libraries(bsm PRIVATE core)

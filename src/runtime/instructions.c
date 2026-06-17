@@ -1,10 +1,14 @@
 #include "instructions.h"
 #include "memory.h"
 #include "vm.h"
+#include "allocator.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 
 void setSRADD(struct VM *vm, int64_t a, int64_t b, int64_t res){
     setSRZF(vm, 0);
@@ -1193,8 +1197,26 @@ VM_Error instrSWPX(struct VM *vm, const struct Instruction *instr){
     return status;
 }
 
-//PUSH R0 (MEM[SP] = R0 & SP = SP-1)
+//PUSH x (MEM[SP] = x & SP = SP-1)
 VM_Error instrPUSH(struct VM *vm, const struct Instruction *instr){
+    if (vm->sp <= STACK_BASE){
+        return VM_STACK_OVERFLOW;
+    }
+    if (instr->a >= N_REG){
+        return VM_ILL_REGISTER;
+    }
+
+    vm->sp -= sizeof(instr->args.imm);
+    VM_Error write_status = memWrite64(vm, vm->sp, instr->args.imm);
+    if (write_status != VM_OK){
+        vm->sp += sizeof(instr->args.imm);
+    }
+    
+    return write_status;    
+}
+
+//PUSHR R0 (MEM[SP] = R0 & SP = SP-1)
+VM_Error instrPUSHR(struct VM *vm, const struct Instruction *instr){
     if (vm->sp <= STACK_BASE){
         return VM_STACK_OVERFLOW;
     }
@@ -1800,7 +1822,308 @@ VM_Error instrHALT(struct VM *vm, const struct Instruction *instr){
     return VM_OK;
 }
 
-//static InstrHandler dispatch[OP_COUNT] = {
+
+
+VM_Error syscallEXIT(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+    vm->running = 0;
+    return VM_OK;
+}
+
+VM_Error syscallWRITE_FILE(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+    
+    int fd = (int) vm->registers[0];
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+    
+    uint64_t addr = (uint64_t) vm->registers[0];
+
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    size_t size = (size_t) vm->registers[0];
+
+    vm->registers[0] = write(fd, vm->memory+addr, size);
+
+    return VM_OK;
+}
+
+VM_Error syscallREAD_FILE(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+    
+    int fd = (int) vm->registers[0];
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+    
+    uint64_t addr = (uint64_t) vm->registers[0];
+    if ((addr < HEAP_BASE) || (addr >= STACK_BASE)) return VM_OUT_OF_THE_HEAP;
+
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    size_t size = (size_t) vm->registers[0];
+
+    vm->registers[0] = read(fd, vm->memory+addr, size);
+
+    return VM_OK;
+}
+
+VM_Error syscallOPEN_FILE(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    char *filename = (char *) &vm->memory[vm->registers[0]];
+
+    vm->registers[0] = open(filename, O_CREAT | O_RDWR, 0777);
+
+    return VM_OK;
+}
+
+VM_Error syscallCLOSE_FILE(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    int fd = vm->registers[0];
+
+    vm->registers[0] = close(fd);
+
+    return VM_OK;
+}
+
+VM_Error syscallPRINT_INT(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    int64_t value = vm->registers[0];
+    printf("%ld", value);
+    vm->registers[0] = 0;
+    return VM_OK;
+}
+
+VM_Error syscallPRINT_STR(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t addr = (uint64_t) vm->registers[0];
+    printf("%s", vm->memory + addr);
+    vm->registers[0] = 0;
+    return VM_OK;
+}
+
+VM_Error syscallREAD_INT(struct VM *vm){
+    int count = scanf("%ld", &vm->registers[0]);
+    if (count != 1){
+        vm->registers[0] = -1;
+    }
+    return VM_OK;
+}
+
+VM_Error syscallREAD_STR(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t addr = (uint64_t) vm->registers[0];
+
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+    
+    size_t size = (size_t) vm->registers[0];
+
+    if ((addr < HEAP_BASE) || (addr + size >= STACK_BASE)) return VM_OUT_OF_THE_HEAP;
+    vm->registers[0] = (fgets((char *)vm->memory + addr, size, stdin) == NULL) ? -1 : 0;
+    return VM_OK;
+}
+
+VM_Error syscallMALLOC(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    size_t size = (size_t) vm->registers[0];
+
+    uint64_t ptr;
+    status = vm_alloc(vm, size, &ptr);
+    vm->registers[0] = (int64_t) ptr;
+    return status;
+}
+
+VM_Error syscallFREE(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t ptr = (uint64_t) vm->registers[0];
+    status = vm_free(vm, ptr);
+    return status;
+}
+
+VM_Error syscallMEMSET(struct VM *vm){
+
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t ptr = (uint64_t) vm->registers[0];
+
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint8_t value = (uint8_t) vm->registers[0];
+
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    size_t size = (size_t) vm->registers[0];
+
+    if ((ptr < HEAP_BASE) || (ptr + size >= MEM_SIZE)) return VM_ILL_MEM_ACCESS;
+
+    memset(vm->memory + ptr, value, size);
+
+    vm->registers[0] = 0;
+    return VM_OK;
+}
+
+VM_Error syscallMEMCPY(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t ptr_a = (uint64_t) vm->registers[0];
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t ptr_b = (uint64_t) vm->registers[0];
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    size_t size = (size_t) vm->registers[0];
+
+    memcpy(vm->memory + ptr_a, vm->memory + ptr_b, size);
+
+    vm->registers[0] = 0;
+    return VM_OK;
+}
+
+VM_Error syscallDUMP_REGS(struct VM *vm){
+
+    printf("----Registers dump----\n");
+    for (size_t i = 0; i < N_REG; i++){
+        printf("R%lu\t: %lx\n", i, vm->registers[i]);
+    }
+    printf("----------------------\n");
+    return VM_OK;
+}
+
+VM_Error syscallDUMP_STACK(struct VM *vm){
+
+    printf("----Stack dump----\n\n");
+    for (size_t i = 0; i < MEM_SIZE - STACK_BASE; i++){
+        printf("[%lx]:%x ", STACK_BASE + i, vm->memory[STACK_BASE + i]);
+        if (((i + 1) % 16) == 0) printf("\n");
+    }
+    printf("\n----------------\n");
+    return VM_OK;
+}
+
+VM_Error syscallDUMP_MEM(struct VM *vm){
+    VM_Error status;
+    struct Instruction pop = {.opcode=OP_POP, .mode=MODE_REGU, .a=0};
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    uint64_t ptr = (uint64_t) vm->registers[0];
+    
+    status = instrPOP(vm, &pop);
+    if (status != VM_OK) return status;
+
+    size_t size = (size_t) vm->registers[0];
+    if (ptr + size > MEM_SIZE) return VM_ILL_MEM_ACCESS;
+    printf("----Memory dump----\n\n");
+    for (size_t i = 0; i < size; i++){
+        printf("[%lx]:%x ", ptr+i, (vm->memory + ptr)[i]);
+        if (((i + 1) % 16) == 0) printf("\n");
+    }
+    printf("\n-----------------\n");
+    return VM_OK;
+}
+
+static SysCall dispatchSyscalls[32] = {
+    [0] = syscallWRITE_FILE,
+    [1] = syscallREAD_FILE,
+    [3] = syscallOPEN_FILE,
+    [4] = syscallCLOSE_FILE,
+    [5] = syscallPRINT_INT,
+    [6] = syscallPRINT_STR,
+    [7] = syscallREAD_INT,
+    [8] = syscallREAD_STR,
+    [9] = syscallEXIT,
+    [10] = syscallMALLOC,
+    [11] = syscallFREE,
+    [12] = syscallMEMSET,
+    [13] = syscallMEMCPY,
+    [14] = syscallDUMP_REGS,
+    [15] = syscallDUMP_STACK,
+    [16] = syscallDUMP_MEM
+};
+
+//TRAP (execute un syscall)
+VM_Error instrTRAP(struct VM *vm, const struct Instruction *instr){
+
+    (void) instr;
+    if (N_REG == 0) return VM_ILL_REGISTER;
+    int syscall_id = vm->registers[0];
+    SysCall handler = dispatchSyscalls[syscall_id];
+    if (handler == NULL){
+        return VM_UNKNOWN_SYSCALL;
+    }
+    VM_Error status = handler(vm);
+    return status;
+}
+
+static InstrHandler dispatchTRAP[MODE_COUNT] = {
+    [MODE_NONE] = instrTRAP
+};
+
 static InstrHandler dispatchADD[MODE_COUNT] = {
     [MODE_IMM] = instrADD,
     [MODE_REG] = instrADDR,
@@ -1911,7 +2234,8 @@ static InstrHandler dispatchSWP[MODE_COUNT] = {
 };
 
 static InstrHandler dispatchPUSH[MODE_COUNT] = {
-    [MODE_REGU] = instrPUSH
+    [MODE_IMM] = instrPUSH,
+    [MODE_REGU] = instrPUSHR
 };
 
 static InstrHandler dispatchPOP[MODE_COUNT] = {
@@ -2034,7 +2358,8 @@ static InstrHandler *dispatch[OP_COUNT] = {
    [OP_JLT] = dispatchJLT,
    [OP_JGE] = dispatchJGE,
    [OP_JGT] = dispatchJGT,
-   [OP_HALT] = dispatchHALT
+   [OP_HALT] = dispatchHALT,
+   [OP_TRAP] = dispatchTRAP
 };
 
 static int dispatchArgsCount[OP_COUNT] = {
@@ -2067,7 +2392,8 @@ static int dispatchArgsCount[OP_COUNT] = {
    [OP_JLT] = 1,
    [OP_JGE] = 1,
    [OP_JGT] = 1,
-   [OP_HALT] = 0
+   [OP_HALT] = 0,
+   [OP_TRAP] = 0
 };
 
 InstrHandler get_handler(OP_CODE op_code, MODE mode){

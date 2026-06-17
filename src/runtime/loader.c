@@ -40,10 +40,10 @@ size_t encodeProgram(const struct Instruction *program, size_t prog_size, uint8_
 VM_Error loadProgram(struct VM *vm, struct Binary *bin, size_t start){
    
     struct BinaryHeader *headers = &bin->headers;
-    if (headers->code_size + start >= DATA_BASE){
+    if (headers->code_size + start >= (size_t) DATA_BASE){
         return VM_CODE_LOAD_OUT_OF_BOUNDS;
     }
-    if (headers->data_size >= STACK_BASE - DATA_BASE){
+    if (headers->data_size >= (size_t) (HEAP_BASE - DATA_BASE)){
         return VM_DATA_LOAD_OUT_OF_BOUNDS;
     }
 

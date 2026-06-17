@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "common.h"
 
@@ -17,7 +18,12 @@ typedef enum {
     VM_DATA_LOAD_OUT_OF_BOUNDS,
     VM_INVALID_EXECUTION_ADDRESS,
     VM_TRUNCATED_INSTR,
-    VM_UNKNOWN_INSTR
+    VM_UNKNOWN_INSTR,
+    VM_UNKNOWN_SYSCALL,
+    VM_OUT_OF_THE_HEAP,
+    VM_HEAP_OUT_OF_MEMORY,
+    VM_MEM_ALREADY_FREE,
+    VM_FREE_OUT_OF_THE_HEAP
 
 } VM_Error;
 
@@ -33,11 +39,21 @@ struct VM {
     uint8_t sr;
     uint8_t memory[MEM_SIZE];
     uint8_t running;
+    struct MemNode *memblocks;
+};
+
+struct MemNode {
+    uint64_t begin;
+    size_t size;
+    struct MemNode *next;
+    int free;
 };
 
 char *errorToString(VM_Error status);
 
 void initVM(struct VM *vm);
+
+void destroyVM(struct VM *vm);
 
 VM_Error vm_run(struct VM *vm);
 

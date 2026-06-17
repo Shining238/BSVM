@@ -54,6 +54,7 @@ static const OpMap op_map[OP_COUNT] = {
     {.mnemonic="JGE", .op=OP_JGE},
     {.mnemonic="JGT", .op=OP_JGT},
     {.mnemonic="HALT", .op=OP_HALT},
+    {.mnemonic="TRAP", .op=OP_TRAP},
 };
 
 

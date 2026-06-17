@@ -1,6 +1,7 @@
 #include "common.h"
 #include "vm.h"
 #include "cpu.h"
+#include "allocator.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +18,29 @@ void initVM(struct VM *vm){
     vm->pc = 0;
     vm->sr = 0x10;
     vm->running = 1;
+
+    vm->memblocks = malloc(sizeof(*(vm->memblocks)));
+    vm->memblocks->begin = HEAP_BASE;
+    vm->memblocks->free = 1;
+    vm->memblocks->next = NULL;
+    vm->memblocks->size = STACK_BASE - HEAP_BASE;
+}
+
+void destroyVM(struct VM *vm){
+    struct MemNode *node = vm->memblocks;
+    struct MemNode *suiv;
+    while (node){
+        suiv = node->next;
+        free(node);
+        node = suiv;
+    }
 }
 
 VM_Error vm_run(struct VM *vm){
     VM_Error status;
-    while (((status = cpu_step(vm)) == VM_OK) && vm->running);
+    size_t cycle = 0;
+    while (((status = cpu_step(vm)) == VM_OK) && vm->running) cycle++;
+    if (status != VM_OK) printf("Nb de cycles : %lu\n", cycle+1);
     return status;
 }
 
@@ -42,6 +61,11 @@ char *errorToString(VM_Error status){
         case VM_INVALID_EXECUTION_ADDRESS: memcpy(str, "PC pointe hors du segment de code", 34); break;
         case VM_TRUNCATED_INSTR: memcpy(str, "Instruction tronquée", 22); break;
         case VM_UNKNOWN_INSTR: memcpy(str, "Instruction indéfinie", 23); break;
+        case VM_UNKNOWN_SYSCALL: memcpy(str, "Syscall indéfini", 18); break;
+        case VM_HEAP_OUT_OF_MEMORY: memcpy(str, "Heap is out of memory", 22); break;
+        case VM_MEM_ALREADY_FREE: memcpy(str, "Memory if already free", 23); break;
+        case VM_OUT_OF_THE_HEAP: memcpy(str, "Address points out of the heap", 31); break;
+        case VM_FREE_OUT_OF_THE_HEAP: memcpy(str, "Tried to free memory out of the heap", 37); break;
         default: memcpy(str, "Something went really wrong :(", 31); break;
     }
     return str;
