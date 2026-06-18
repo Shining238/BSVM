@@ -7,12 +7,24 @@ Pour assembler un .asm en .bsin : ./build/bsm file.asm out.bsin
 Pour executer un .bsin sur la VM : ./build/bsvm file.bsin
 
 ```mermaid
-.asm → lexer → parser → IR → assembler → .bsin
-.bsin → loader → VM → execution
+flowchart LR
+    ASM[.asm] --> lexer
+    lexer --> parser
+    parser --> IR
+    IR --> assembler
+    assembler --> .bsin
 ```
+
+```mermaid
+flowchart LR
+    .bsin --> loader
+    loader --> VM
+    VM --> execution
+```
+
 Pour commenter l'assembleur : "//"
 
----- Documentation de l'assembleur ----
+--------------------------------------- Documentation de l'assembleur ---------------------------------------
 
 Syscalls :
 
@@ -126,7 +138,7 @@ Instructions :
     JGT imm/reg/dir/ind/idx      -- JGT x : PC = x if greater than
 
 
-------------------EXAMPLES------------------
+--------------------------------------- EXAMPLES ---------------------------------------
 ```asm
 .entry start
 
