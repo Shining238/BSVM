@@ -47,13 +47,13 @@ Directives assembleur :
 
     .word x (write x (8 bytes) to current address in data segment)
 
-    .byte x (write x (1 byte) to curretn address in data segment)
+    .byte x (write x (1 byte) to current address in data segment)
 
     .addr addr (writes addr to current address in data segment)
 
     .text (declares a text section)
 
-    .data (declare a data section)
+    .data (declares a data section)
 
 
 Instructions :
@@ -102,7 +102,7 @@ Instructions :
 
     RST                          -- RST : resets the vm
 
-    HALT                         -- HALT : stop the vm
+    HALT                         -- HALT : stops the vm
 
     TRAP                         -- TRAP : syscall (see below for examples)
 
@@ -124,7 +124,7 @@ Instructions :
 
 
 ------------------EXAMPLES------------------
-
+'''asm
 .entry start
 
 .text // text section
@@ -182,3 +182,4 @@ string:
 
 newline:
     .string "\n"
+'''
