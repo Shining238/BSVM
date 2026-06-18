@@ -6,7 +6,10 @@ Pour assembler un .asm en .bsin : ./build/bsm file.asm out.bsin
 
 Pour executer un .bsin sur la VM : ./build/bsvm file.bsin
 
-
+```mermaid
+.asm → lexer → parser → IR → assembler → .bsin
+.bsin → loader → VM → execution
+```
 Pour commenter l'assembleur : "//"
 
 ---- Documentation de l'assembleur ----
@@ -124,7 +127,7 @@ Instructions :
 
 
 ------------------EXAMPLES------------------
-'''asm
+```asm
 .entry start
 
 .text // text section
@@ -182,4 +185,4 @@ string:
 
 newline:
     .string "\n"
-'''
+```
