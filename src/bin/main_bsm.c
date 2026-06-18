@@ -24,8 +24,7 @@ int main(int argc, char *argv[]){
         usage(argv[0]);
     }
 
-    printf("Hello world !\n");
-        size_t prog_size = 0;
+    size_t prog_size = 0;
     struct IR_Node *IRList = parser(argv[1], &prog_size);
     printf("prog size : %lu\n", prog_size);
     for (size_t i = 0; i < prog_size; i++){

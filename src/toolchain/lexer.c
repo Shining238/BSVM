@@ -75,8 +75,13 @@ struct Token lexer_next_token(struct Lexer *lexer, LexerError *status){
     //comment
     if ((*lexer->cursor == '/') && (*(lexer->cursor+1) == '/')){
         lexer->cursor += 2;
+        while ((*lexer->cursor != '\n') && (*lexer->cursor != '\0')){
+            lexer->cursor++;
+            lexer->column++;
+        }
         *status = LEXER_OK;
-        return (struct Token) {.type=TOKEN_NEWLINE, .line=lexer->line, .column=lexer->column};
+        TokenType type = (*lexer->cursor == '\n') ? TOKEN_NEWLINE : TOKEN_EOF;
+        return (struct Token) {.type=type, .line=lexer->line, .column=lexer->column};
     }
     //register
     if (*lexer->cursor == 'R'){

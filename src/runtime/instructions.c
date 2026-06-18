@@ -1461,6 +1461,7 @@ VM_Error instrNOP(struct VM *vm, const struct Instruction *instr){
 //RST (reinitialise la vm)
 VM_Error instrRST(struct VM *vm, const struct Instruction *instr){
     (void) instr;
+    destroyVM(vm);
     initVM(vm);
     return VM_OK;
 }
